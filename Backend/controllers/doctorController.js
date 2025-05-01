@@ -74,7 +74,6 @@ export const getDoctorIdByUserId = async (req, res) => {
     }
   };
 
-  
   export const getDoctorProfile = async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -93,58 +92,76 @@ export const getDoctorIdByUserId = async (req, res) => {
           d.specialization,
           d.license_number,
           d.about,
-          d.profile_picture
+          d.profile_picture,
+          d.opd_schedule
         FROM doctors d
         JOIN users u ON d.user_id = u.id
-        WHERE d.id = ? 
-        AND d.verification_status = 'approved'
+        WHERE d.id = ?
       `, [doctorId]);
   
       if (!doctorData.length) {
         return res.status(404).json({ message: "Doctor not found" });
       }
-  
-      const [qualifications, experience] = await Promise.all([
-        connection.query(`SELECT * FROM qualifications WHERE doctor_id = ?`, [doctorId]),
-        connection.query(`SELECT * FROM experience WHERE doctor_id = ?`, [doctorId])
-      ]);
-  
-      res.status(200).json({
-        success: true,
-        doctor: {
-          ...doctorData[0],
-          qualifications: qualifications[0],
-          experience: experience[0]
-        }
-      });
-  
+
+        const [qualifications, experience] = await Promise.all([
+            connection.query(`SELECT * FROM qualifications WHERE doctor_id = ?`, [doctorId]),
+            connection.query(`SELECT * FROM experience WHERE doctor_id = ?`, [doctorId])
+        ]);
+
+        res.status(200).json({
+            success: true,
+            doctor: {
+                ...doctorData[0],
+                qualifications: qualifications[0] || [],
+                experience: experience[0] || []
+            }
+        });
+
     } catch (error) {
-      console.error("Error:", error);
-      res.status(500).json({ message: "Server error" });
+        console.error("Error:", error);
+        res.status(500).json({ message: "Server error" });
     } finally {
-      connection.release();
+        connection.release();
     }
-  };
-  
-  export const updateDoctorProfile = async (req, res) => {
-    const connection = await pool.getConnection();
-    try {
+};
+
+export const updateDoctorProfile = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
       const doctorId = req.params.id;
-      const { about } = req.body;
-  
+      const { fullname, specialization, contact, about, profile_picture } = req.body;
+
+      await connection.beginTransaction();
+
+      // Update both users and doctors tables
       await connection.query(`
-        UPDATE doctors SET
-          about = ?
-        WHERE id = ?
-      `, [about, doctorId]);
-  
-      res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ message: 'Update failed' });
-    } finally {
+          UPDATE users u
+          JOIN doctors d ON u.id = d.user_id
+          SET
+              u.fullname = ?,
+              u.contact = ?,
+              d.specialization = ?,
+              d.about = ?,
+              d.profile_picture = ?
+          WHERE d.id = ?
+      `, [fullname, contact, specialization, about, profile_picture, doctorId]);
+
+      await connection.commit();
+      res.json({ 
+          success: true,
+          message: 'Profile updated successfully'
+      });
+  } catch (error) {
+      await connection.rollback();
+      console.error('Update error:', error);
+      res.status(500).json({ 
+          success: false,
+          message: 'Profile update failed' 
+      });
+  } finally {
       connection.release();
-    }
-  };
+  }
+};
 
 
  

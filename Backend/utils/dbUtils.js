@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS doctors(
     about TEXT,
     opd_schedule JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) 
 )`;
 
@@ -182,7 +183,7 @@ CREATE TABLE IF NOT EXISTS deduction_types (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`;
 
-const qualitficationTableQuery = `
+const qualificationTableQuery = `
 CREATE TABLE qualifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     doctor_id INT NOT NULL,
@@ -222,8 +223,8 @@ const createAllTable = async () => {
     try {
         await createTable("Users", userTableQuery);
         await createTable("Doctors", doctorTableQuery);
-        await createTable("Qualifications", qualitficationTableQuery);
-        await createTable("Experience", experienceTableQuery);
+        await createTable("qualifications", qualificationTableQuery);
+        await createTable("experience", experienceTableQuery);
         await createTable("Doctor_availability", doctor_availabilityTableQuery);
         await createTable("Appointments", appointmentsTableQuery);
         await createTable("Token_logs", token_logsTableQuery);

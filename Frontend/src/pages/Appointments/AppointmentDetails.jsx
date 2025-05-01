@@ -3,6 +3,9 @@ import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import '../../style/appointmentDetail.css';
+
+
+
 const AppointmentDetails = () => {
     const location = useLocation();
     const { doctorId, date, timeSlot } = location.state || {};
@@ -96,7 +99,7 @@ const AppointmentDetails = () => {
 
                 <div className="form-section">
                     <label>Time Slot:</label>
-                    <p>{timeSlot?.star_time} - {timeSlot?.end_time}</p>
+                       <p>{timeSlot?.start_time} - {timeSlot?.end_time}</p>
                 </div>
 
                 <div className="form-group">

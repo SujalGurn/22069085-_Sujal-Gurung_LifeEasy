@@ -43,7 +43,6 @@ const DoctorDashboard = () => {
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Earnings Chart */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm">
           <h2 className="text-xl font-semibold mb-4 text-[#14467c]">Earnings Overview</h2>
           <ResponsiveContainer width="100%" height={300}>
@@ -52,7 +51,7 @@ const DoctorDashboard = () => {
               <XAxis dataKey="month" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="earnings" fill="#f9cc48" />
+              <Bar dataKey="earnings" fill="#CBE9DC" />
             </BarChart>
           </ResponsiveContainer>
         </div>

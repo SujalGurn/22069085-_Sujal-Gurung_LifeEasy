@@ -1,0 +1,214 @@
+/* medicalHistory.css */
+
+.medical-history-container {
+    max-width: 100%;
+    padding: 3rem 1.5rem;
+    margin: 0 auto;
+    background: linear-gradient(180deg, #F8F4EE 0%, #F8F4EE 100%);
+    display: flex;
+    justify-content: center;
+    height: auto;
+    align-items: center;
+}
+
+.medical-history-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    max-width: 1400px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: fadeIn 0.6s ease-out;
+}
+
+@media (min-width: 768px) {
+    .medical-history-card {
+        grid-template-columns: 1fr;
+    }
+}
+
+.medical-history-title {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 0.75rem;
+    position: relative;
+    text-align: center;
+}
+
+.medical-history-title::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: #10b981;
+    transition: width 0.3s ease;
+}
+
+.medical-history-card:hover .medical-history-title::after {
+    width: 120px;
+}
+
+.medical-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.medical-history-item {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: fadeInUp 0.7s ease-out;
+}
+
+.medical-history-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.medical-history-item p {
+    font-family: 'Lora', serif;
+    font-size: 1.125rem;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.medical-history-item p strong {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    color: #1f2937;
+    width: 40%;
+}
+
+.medical-history-item p span,
+.medical-history-item p a {
+    color: #6b7280;
+    width: 60%;
+    text-align: right;
+    font-style: normal;
+}
+
+.medical-history-item p a {
+    color: #14467c;
+    text-decoration: underline;
+    transition: color 0.3s ease;
+}
+
+.medical-history-item p a:hover {
+    color: #F9CC48;
+}
+
+.medical-history-report-button {
+    display: inline-block;
+    padding: 0.75rem 2rem;
+    background: #F9CC48;
+    color: black;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(249, 204, 72, 0.3);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    margin-top: 1rem;
+}
+
+.medical-history-report-button:hover {
+    background: #f8d671;
+    box-shadow: 0 8px 24px rgba(249, 204, 72, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Loading and Error States */
+.medical-history-loading,
+.medical-history-error,
+.medical-history-empty {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    padding: 3.5rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+    margin: 3rem auto;
+    max-width: 500px;
+    animation: fadeIn 0.6s ease-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.medical-history-spinner {
+    animation: spin 1s linear infinite;
+    color: #F9CC48;
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.medical-history-loading-text,
+.medical-history-error-text,
+.medical-history-empty-text {
+    font-family: 'Lora', serif;
+    color: #6b7280;
+    font-size: 1.25rem;
+    margin-top: 1.5rem;
+    font-style: italic;
+}
+
+.medical-history-error-text {
+    color: #dc2626;
+    font-weight: 500;
+}
+
+.medical-history-empty-text {
+    color: #14467c;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}

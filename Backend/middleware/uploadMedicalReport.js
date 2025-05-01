@@ -3,14 +3,14 @@ import multer from 'multer';
 import path from 'path';
 
 const storage = multer.diskStorage({
-    destination: 'uploads/medical-reports/', // Changed destination
+    destination: 'uploads/medical-reports/',
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 
-const uploadMedicalReport = multer({ // Renamed the multer instance
+const uploadMedicalReport = multer({ 
     storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
     fileFilter: (req, file, cb) => {
@@ -23,4 +23,4 @@ const uploadMedicalReport = multer({ // Renamed the multer instance
     }
 });
 
-export default uploadMedicalReport; // Export the new instance
+export default uploadMedicalReport; 

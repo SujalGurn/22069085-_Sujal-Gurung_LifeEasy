@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import '../../style/availableDoc.css';
+import '../../style/manageAvailable.css';
 
 const AddAvailability = () => {
     const [days, setDays] = useState([
@@ -48,13 +48,12 @@ const AddAvailability = () => {
         try {
             const availabilityData = days
                 .filter(day => selectedDays.includes(day.day_of_week))
-                .map(day => ( {
+                .map(day => ({
                     day_of_week: day.day_of_week,
                     start_time: day.start_time,
                     end_time: day.end_time
                 }));
 
-            // Validate time slots
             const invalidSlots = availabilityData.filter(
                 slot => !validateTime(slot.start_time, slot.end_time)
             );
@@ -64,7 +63,7 @@ const AddAvailability = () => {
             }
 
             const response = await axios.post(
-                'http://localhost:3002/api/doctors/availability', // Correct URL
+                'http://localhost:3002/api/doctors/availability',
                 { days: availabilityData },
                 {
                     headers: {
@@ -86,62 +85,83 @@ const AddAvailability = () => {
 
     return (
         <div className="availability-container">
-            <h2>Manage Availability</h2>
-            {error && <div className="error-message">{error}</div>}
-            {success && <div className="success-message">{success}</div>}
+            <div className="availability-card">
+                <h2 className="availability-title">Manage Availability</h2>
+                {error && <div className="availability-error">{error}</div>}
+                {success && <div className="availability-success">{success}</div>}
 
-            <form onSubmit={handleSubmit}>
-                <div className="day-selection">
-                    {days.map(day => (
-                        <label 
-                            key={day.day_of_week}
-                            className={`day-checkbox ${ (day.start_time || day.end_time) ? 'disabled' : ''}`}
+                <form onSubmit={handleSubmit} className="availability-form">
+                    <div className="day-selection">
+                        <h3 className="day-selection-heading">Select Days</h3>
+                        <div className="day-checkboxes">
+                            {days.map(day => (
+                                <label 
+                                    key={day.day_of_week}
+                                    className={`day-checkbox ${
+                                        day.start_time || day.end_time ? 'disabled' : ''
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedDays.includes(day.day_of_week)}
+                                        onChange={() => handleDayChange(day.day_of_week)}
+                                        disabled={!!day.start_time || !!day.end_time}
+                                    />
+                                    <span className="day-label">{day.day_of_week}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="time-inputs">
+                        {selectedDays.length > 0 && (
+                            <h3 className="time-inputs-heading">Set Time Slots</h3>
+                        )}
+                        <div className="time-groups">
+                            {selectedDays.map(day => {
+                                const dayData = days.find(d => d.day_of_week === day);
+                                return (
+                                    <div key={day} className="time-group">
+                                        <h4 className="time-group-day">{day}</h4>
+                                        <div className="time-fields">
+                                            <div className="form-item">
+                                                <label className="form-label">Start Time</label>
+                                                <input
+                                                    type="time"
+                                                    value={dayData.start_time}
+                                                    onChange={(e) => handleTimeChange(day, 'start_time', e.target.value)}
+                                                    className="form-input"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="form-item">
+                                                <label className="form-label">End Time</label>
+                                                <input
+                                                    type="time"
+                                                    value={dayData.end_time}
+                                                    onChange={(e) => handleTimeChange(day, 'end_time', e.target.value)}
+                                                    className="form-input"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="availability-actions">
+                        <button 
+                            type="submit" 
+                            className="availability-submit-button"
+                            disabled={selectedDays.length === 0}
                         >
-                            <input
-                                type="checkbox"
-                                checked={selectedDays.includes(day.day_of_week)}
-                                onChange={() => handleDayChange(day.day_of_week)}
-                                disabled={!!day.start_time || !!day.end_time}
-                            />
-                            {day.day_of_week}
-                        </label>
-                    ))}
-                </div>
-
-                <div className="time-inputs">
-                    {selectedDays.map(day => {
-                        const dayData = days.find(d => d.day_of_week === day);
-                        return (
-                            <div key={day} className="time-group">
-                                <h4>{day}</h4>
-                                <div className="time-fields">
-                                    <input
-                                        type="time"
-                                        value={dayData.start_time}
-                                        onChange={(e) => handleTimeChange(day, 'start_time', e.target.value)}
-                                        required
-                                    />
-                                    <span>to</span>
-                                    <input
-                                        type="time"
-                                        value={dayData.end_time}
-                                        onChange={(e) => handleTimeChange(day, 'end_time', e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <button 
-                    type="submit" 
-                    className="submit-button"
-                    disabled={selectedDays.length === 0}
-                >
-                    Save Availability
-                </button>
-            </form>
+                            Save Availability
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 };

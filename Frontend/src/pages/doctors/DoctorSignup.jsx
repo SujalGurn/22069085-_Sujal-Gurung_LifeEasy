@@ -3,7 +3,8 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import UserModel from "../../model/userModel";
-import sideimg from "../../assets/profile.png";
+import sideimg from "../../assets/doctor.jpg";
+import "../../style/Docsignup.css";
 
 const DoctorSignup = () => {
     const [formValues, setFormValues] = useState({
@@ -106,15 +107,7 @@ const DoctorSignup = () => {
             console.log("Full response data: ", response.data); 
             if (response.data.success) {
                 toast.success("Doctor registration submitted for verification!");
-                // navigate("/verificationPending", { 
-                //     state: { 
-                //         status: "pending",
-                //         email: formValues.email 
-                //     }
-                // });
-                // await fetchUserDetails();
-                // console.log("Navigating to /verifyPending");
-              
+
                 navigate("/verifyPending", { replace: true, state: { fromRegistration: true } });
             } else {
                 console.log("User is not a doctor, navigating to /");

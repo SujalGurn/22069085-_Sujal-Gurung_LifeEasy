@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-
 const OTPverification = () => {
   const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
@@ -12,20 +11,18 @@ const OTPverification = () => {
   const email = location.state?.email;
 
   useEffect(() => {
-      console.log("OptVerify location:", location); // Log the entire location object
-      console.log("OptVerify location.state:", location.state); // Log location.state
-      console.log("OptVerify email:", email); // Log the extracted email
-      if (!email) {
-          console.log("Email is missing, redirecting to Signup");
-          navigate("/Signup");
-      }
-  }, [email, navigate, location]);;
+    console.log("OtpVerify location:", location);
+    console.log("OtpVerify location.state:", location.state);
+    console.log("OtpVerify email:", email);
+    if (!email) {
+      console.log("Email is missing, redirecting to Signup");
+      navigate("/Signup");
+    }
+  }, [email, navigate, location]);
 
-  // Verify OTP
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
 
-    // Validate OTP length
     if (otp.length !== 6 || isNaN(otp)) {
       return setMessage("OTP must be a 6-digit number.");
     }
@@ -37,7 +34,7 @@ const OTPverification = () => {
         otp,
       });
       setMessage(response.data.message);
-      navigate("/Login"); // Redirect after verification
+      navigate("/Login");
     } catch (error) {
       setMessage(error.response?.data?.error || "OTP verification failed.");
     } finally {
@@ -46,29 +43,50 @@ const OTPverification = () => {
   };
 
   return (
-    <div className="optcontainer">
-      <h2>🔐 OTP Verification</h2>
-      {email ? <p>We have sent an OTP to: <strong>{email}</strong></p> : null}
+    <div className="otp-verification-container">
+      <div className="otp-verification-card">
+        <h2 className="otp-verification-title">🔐 OTP Verification</h2>
+        {email ? (
+          <p className="otp-verification-email">
+            We have sent an OTP to: <strong>{email}</strong>
+          </p>
+        ) : null}
 
-      <form onSubmit={handleVerifyOtp} className="optform">
-        <label>Enter OTP:</label>
-        <input
-          type="text"
-          placeholder="6-digit OTP"
-          value={otp}
-          onChange={(e) => setOtp(e.target.value)}
-          required
-        />
-        <button type="submit" disabled={loading}>
-          {loading ? "Verifying..." : "Verify OTP"}
-        </button>
-      </form>
+        <form onSubmit={handleVerifyOtp} className="otp-verification-form">
+          <div className="form-item">
+            <label className="form-label">Enter OTP</label>
+            <input
+              type="text"
+              placeholder="6-digit OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              className="form-input"
+              required
+            />
+          </div>
+          <div className="otp-verification-actions">
+            <button
+              type="submit"
+              className="otp-verification-submit-button"
+              disabled={loading}
+            >
+              {loading ? "Verifying..." : "Verify OTP"}
+            </button>
+          </div>
+        </form>
 
-      {message && <p>{message}</p>}
+        {message && (
+          <p
+            className={`otp-verification-message ${
+              message.includes("failed") ? "error" : "success"
+            }`}
+          >
+            {message}
+          </p>
+        )}
+      </div>
     </div>
   );
 };
-
-
 
 export default OTPverification;

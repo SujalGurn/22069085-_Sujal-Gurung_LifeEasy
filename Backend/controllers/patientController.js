@@ -13,6 +13,11 @@ export const createPatientProfile = async (req, res) => {
         } else {
             res.status(400).json(result);
         }
+        // When a user registers as a patient
+await pool.query(
+    'INSERT INTO patient (user_id, patient_code) VALUES (?, ?)',
+    [newUserId, generatePatientCode()]
+);
     } catch (error) {
         console.error('Error creating patient profile:', error);
         res.status(500).json({ success: false, message: 'Internal server error', error: error.message });

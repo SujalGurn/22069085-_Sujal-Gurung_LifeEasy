@@ -1,8 +1,9 @@
-// In your ViewPatientProfile.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-
+import { Loader } from 'lucide-react';
+import '../../style/PatientsProfile.css';
+import Footer from "../../components/Footer";
 const ViewPatientProfile = () => {
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -31,31 +32,108 @@ const ViewPatientProfile = () => {
     }, []);
 
     if (loading) {
-        return <div>Loading patient profile...</div>;
+        return (
+            <div className="patient-profile-container">
+                <div className="patient-profile-loading">
+                    <Loader className="patient-profile-spinner" />
+                    <span className="patient-profile-loading-text">Loading patient profile...</span>
+                </div>
+            </div>
+        );
     }
 
     if (error) {
-        return <p style={{ color: 'red' }}>{error}</p>;
+        return (
+            <div className="patient-profile-container">
+                <div className="patient-profile-error">
+                    <p className="patient-profile-error-text">{error}</p>
+                </div>
+            </div>
+        );
     }
 
     if (!profileData) {
-        return <p>No patient profile found. <Link to="/edit-patient-profile">Create one?</Link></p>;
+        return (
+            <div className="patient-profile-container">
+                <div className="patient-profile-empty">
+                    <p className="patient-profile-empty-text">No patient profile found.</p>
+                    <Link to="/edit-patient-profile" className="patient-profile-cta-button">
+                        Create Profile
+                    </Link>
+                </div>
+            </div>
+        );
     }
 
     return (
         <div>
-            <h2>Your Patient Profile</h2>
-            <p><strong>Full Name:</strong> {profileData.fullname}</p> {/* Display fullname */}
-            <p><strong>Email:</strong> {profileData.email}</p> {/* Display email */}
-            {profileData.patient_code && <p><strong>Patient Code:</strong> {profileData.patient_code}</p>}
-            {profileData.gender && <p><strong>Gender:</strong> {profileData.gender}</p>}
-            {profileData.blood_group && <p><strong>Blood Group:</strong> {profileData.blood_group}</p>}
-            {profileData.address && <p><strong>Address:</strong> {profileData.address}</p>}
-            {profileData.contact_number && <p><strong>Contact Number:</strong> {profileData.contact_number}</p>}
-            {profileData.emergency_contact_name && <p><strong>Emergency Contact Name:</strong> {profileData.emergency_contact_name}</p>}
-            {profileData.emergency_contact_number && <p><strong>Emergency Contact Number:</strong> {profileData.emergency_contact_number}</p>}
-            <Link to="/edit-patient-profile">Edit Profile</Link>
+        <div className="patient-profile-container">
+            <div className="profile-grid">
+                <div>
+                    <div className="patient-header">
+                        <img
+                            src={profileData.profile_picture || '/default-avatar.png'}
+                            alt={profileData.fullname}
+                            className="patient-avatar"
+                        />
+                        <div className="patient-info">
+                            <h1 className="patient-name">{profileData.fullname}</h1>
+                            <p className="patient-email">{profileData.email}</p>
+                        </div>
+                    </div>
+
+                    <div className="section-content">
+                        <h2 className="section-title">Patient Details</h2>
+                        <ul className="patient-details-list">
+                            {profileData.patient_code && (
+                                <li className="list-item">
+                                    <strong>Patient Code:</strong> {profileData.patient_code}
+                                </li>
+                            )}
+                            {profileData.gender && (
+                                <li className="list-item">
+                                    <strong>Gender:</strong> {profileData.gender}
+                                </li>
+                            )}
+                            {profileData.blood_group && (
+                                <li className="list-item">
+                                    <strong>Blood Group:</strong> {profileData.blood_group}
+                                </li>
+                            )}
+                            {profileData.address && (
+                                <li className="list-item">
+                                    <strong>Address:</strong> {profileData.address}
+                                </li>
+                            )}
+                            {profileData.contact_number && (
+                                <li className="list-item">
+                                    <strong>Contact Number:</strong> {profileData.contact_number}
+                                </li>
+                            )}
+                            {profileData.emergency_contact_name && (
+                                <li className="list-item">
+                                    <strong>Emergency Contact Name:</strong> {profileData.emergency_contact_name}
+                                </li>
+                            )}
+                            {profileData.emergency_contact_number && (
+                                <li className="list-item">
+                                    <strong>Emergency Contact Number:</strong> {profileData.emergency_contact_number}
+                                </li>
+                            )}
+                        </ul>
+
+                        <div className="patient-profile-actions">
+                            <Link to="/edit-patient-profile" className="patient-profile-cta-button">
+                                Edit Profile
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            
+            </div>
         </div>
+    <Footer />
+    </div>
     );
 };
 

@@ -16,33 +16,33 @@ const UserHeader = () => {
                 <span className="logo-text">LifeEasy</span>
             </div>
             <ul className="navbar-links nav-list">
-                <li>
-                    <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
-                        Home
-                    </Link>
+            <li>
+                    <Link to="/homes" className={location.pathname === '/homes' ? 'active' : ''} >
+                homes          
+          </Link>
                 </li>
                 <li>
                     <Link to="/doctorSignup" className={location.pathname === '/doctorSignup' ? 'active' : ''} >
                         Doctor Register
                     </Link>
                 </li>
+                
+
                 {userData && userData.role === 'user' && (
                     <>
+                   
                         <li>
                             <Link to="/patient-profile" className={location.pathname === '/patient-profile' ? 'active' : ''} >
                                 View Profile
                             </Link>
                         </li>
-                        <li>
-                            <Link to="/edit-patient-profile" className={location.pathname === '/edit-patient-profile' ? 'active' : ''} >
-                                Edit Profile
-                            </Link>
-                        </li>
+                      
                         <li>
                             <Link to="/my-medical-history" className={location.pathname === '/my-medical-history' ? 'active' : ''} >
                                 My Medical History
                             </Link>
                         </li>
+
                     </>
                 )}
                 <li>
@@ -52,7 +52,7 @@ const UserHeader = () => {
                 </li>
                 {userData && (userData.role === 'doctor' || userData.role === 'admin') && (
                     <li>
-                        <Link to="/appointmentList" className={location.pathname === '/appointmentList' ? 'active' : ''}>
+                        <Link to="/appointmentsl" className={location.pathname === '/appointmentsList' ? 'active' : ''}>
                             Appointments
                         </Link>
                     </li>

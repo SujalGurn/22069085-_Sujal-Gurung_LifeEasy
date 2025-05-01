@@ -79,51 +79,51 @@ const Login = () => {
   };
 
  
-
-
-
-
   return (
-    <div className="login-container">
-      <h2>Login</h2>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Email</label>
-          <input
-            type="email"
-            name="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {errors.email && <span className="error-message">{errors.email}</span>}
+    <div className="login-wrapper">
+      <div className="login-container">
+        <h1 className="main-logo">LifeEasy</h1>
+        <h2 className="login-heading">Sign in</h2>
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="input-group">
+            <input
+              type="email"
+              placeholder="Email or mobile phone number"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={errors.email ? "error" : ""}
+            />
+            {errors.email && <div className="error-message">{errors.email}</div>}
+          </div>
+
+          <div className="input-group">
+            <input
+              type="password"
+              placeholder="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={errors.password ? "error" : ""}
+            />
+            {errors.password && <div className="error-message">{errors.password}</div>}
+          </div>
+
+          <button type="submit" className="login-button">
+            Log In
+          </button>
+        </form>
+
+        <div className="terms-text">
+          By continuing, you agree to the <Link to="/terms">Terms of use</Link> and{" "}
+          <Link to="/privacy">Privacy Policy</Link>.
         </div>
-        <div className="form-group">
-          <label>Password</label>
-          <input
-            type="password"
-            name="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {errors.password && <span className="error-message">{errors.password}</span>}
+
+        <div className="auth-links">
+          <Link to="/forgot-password">Forget your password</Link>
+          <span className="divider">|</span>
+          <Link to="/signUp">Don't have an account? Register</Link>
         </div>
-        <button type="submit" className="login-btn">
-          Login
-        </button>
-      </form>
-      
-      <p style={{ textAlign: "center" }}>
-        Don't have an account?{" "}
-        <Link
-          to="/signUp"
-          className="toggle-link"
-          style={{ color: "#007BFF", textDecoration: "underline" }}
-        >
-          Sign Up
-        </Link>
-      </p>
+      </div>
     </div>
   );
 };

@@ -58,14 +58,19 @@ export const isDoctor = (req, res, next) => {
 // };
 
 export const isSameDoctor = (req, res, next) => {
-  const requestedId = req.params.id;
+  const requestedDoctorId = parseInt(req.params.id);
+  
+  // Allow GET requests (viewing) by anyone
+  if (req.method === 'GET') return next();
 
-  if (req.user.id !== parseInt(requestedId)) {
+  // Restrict write operations (PUT/POST/DELETE) to the doctor's own profile
+  if (req.user.id !== requestedDoctorId) {
     return res.status(403).json({
       success: false,
-      message: "Access denied to other doctor's data"
+      message: "Access denied: You can only modify your own profile",
     });
   }
+  
   next();
 };
 
@@ -78,4 +83,6 @@ export const checkRole = (roles) => (req, res, next) => {
   }
   next();
 };
+
+
 

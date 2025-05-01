@@ -156,10 +156,10 @@ export const getPendingVerifications = async (req, res) => {
             WHERE verification_status = 'pending'
         `);
 
-        console.log("Doctors from database:", doctors); // Add this line
+        console.log("Doctors from database:", doctors);
 
         if (!doctors.length) {
-            console.log("No pending verifications found."); // Add this line
+            console.log("No pending verifications found."); 
             return res.status(404).json({ 
                 success: false, 
                 message: "No pending verifications found" 

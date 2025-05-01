@@ -86,23 +86,28 @@ export const configureSalary = async (req, res) => {
 
 // 2. Auto Salary Generation
 const generateSalaries = async () => {
+    console.log('--- CRON JOB TRIGGERED AT:', new Date().toISOString());
+    console.log('Current Server Time:', new Date());
     const connection = await pool.getConnection();
     try {
-        await connection.beginTransaction();
-        
-        const [dueSalaries] = await connection.query(`
-            SELECT a.* 
-            FROM auto_salary a
-            WHERE a.auto_generate = TRUE 
-            AND a.next_payment_date <= CURDATE()
-        `);
+      const [dueSalaries] = await connection.query(`
+            SELECT * 
+            FROM auto_salary 
+            WHERE auto_generate = 1
+      `);
+    //   WHERE next_payment_date <= CURDATE()
 
-        for (const config of dueSalaries) {
-            const deductions = JSON.parse(config.standard_deductions || '{}');
-            const { totalDeductions, deductionDetails } = calculateDeductions(
-                config.base_salary,
-                deductions
-            );
+      console.log(`[CRON] Found ${dueSalaries.length} due salaries`);
+      for (const config of dueSalaries) {
+        console.log(`Processing doctor ${config.doctor_id}`);
+        console.log('Deductions:', config.standard_deductions);
+        // Fix: Use config.standard_deductions directly (no JSON.parse)
+        const deductions = config.standard_deductions || {};
+        
+        const { totalDeductions, deductionDetails } = calculateDeductions(
+          config.base_salary,
+          deductions // Already parsed by MySQL driver
+        );
 
             await connection.query(`
                 INSERT INTO salary_payments 
@@ -143,109 +148,197 @@ const generateSalaries = async () => {
 cron.schedule('* * * * *', generateSalaries);
 
 // 3. Salary Approval
+// File: controllers/salaryController.js
 export const approveSalary = async (req, res) => {
     const connection = await pool.getConnection();
+    const { paymentId } = req.params;
+
     try {
-        const { paymentId } = req.params;
         const { adjustments } = req.body;
 
+        // Validate request format
+        if (!Array.isArray(adjustments)) {
+            throw new Error("Invalid adjustments format. Expected array of adjustment objects");
+        }
+
         await connection.beginTransaction();
-        
-        // Get existing payment
-        const [payment] = await connection.query(`
-            SELECT * FROM salary_payments 
-            WHERE id = ? 
-            FOR UPDATE
-        `, [paymentId]);
 
-        // Apply adjustments
-        let newDeductions = payment.total_deductions;
-        let details = JSON.parse(payment.deduction_details);
+        // 1. Lock and fetch payment record
+        const [payment] = await connection.query(
+            `SELECT 
+                id, 
+                doctor_id,
+                gross_amount,
+                total_deductions,
+                deduction_details,
+                status
+             FROM salary_payments 
+             WHERE id = ? FOR UPDATE`,
+            [paymentId]
+        );
+
+        if (!payment.length) {
+            throw new Error(`Salary payment ${paymentId} not found`);
+        }
+
+        // 2. Process deduction details
+        let deductionDetails = payment[0].deduction_details;
         
-        adjustments.forEach(({ name, adjustment }) => {
-            const index = details.findIndex(d => d.name === name);
-            if (index > -1) {
-                details[index].calculated += adjustment;
-                newDeductions += adjustment;
+        // Handle JSON string format
+        if (typeof deductionDetails === 'string') {
+            try {
+                deductionDetails = JSON.parse(deductionDetails);
+            } catch (error) {
+                throw new Error("Malformed deduction_details JSON");
             }
-        });
+        }
 
-        await connection.query(`
-            UPDATE salary_payments
-            SET
-                total_deductions = ?,
-                deduction_details = ?,
-                status = 'approved'
-            WHERE id = ?
-        `, [newDeductions, JSON.stringify(details), paymentId]);
+        // Convert legacy object format to array
+        if (!Array.isArray(deductionDetails)) {
+            deductionDetails = Object.entries(deductionDetails).map(
+                ([name, config]) => ({
+                    name: name.trim(),
+                    type: config.type?.toLowerCase() || 'fixed',
+                    value: Number(config.value) || 0,
+                    calculated: Number(config.calculated) || 0
+                })
+            );
+        }
 
-        await connection.query(`
-            UPDATE doctors
-            SET total_income = total_income + ?
-            WHERE id = ?
-        `, [payment.gross_amount - newDeductions, payment.doctor_id]);
+        // Validate deduction structure
+        const isValidDeductions = deductionDetails.every(d => 
+            typeof d.name === 'string' &&
+            ['fixed', 'percentage'].includes(d.type) &&
+            typeof d.value === 'number' &&
+            typeof d.calculated === 'number'
+        );
 
-        // Fetch doctor's email
-        const [doctorInfo] = await connection.query(`
-            SELECT u.email, u.fullname
-            FROM users u
-            JOIN doctors d ON u.id = d.user_id
-            JOIN salary_payments sp ON d.id = sp.doctor_id
-            WHERE sp.id = ?
-        `, [paymentId]);
+        if (!isValidDeductions) {
+            throw new Error("Invalid deduction structure in database");
+        }
 
-        if (doctorInfo[0]?.email) {
-            const { email, fullname } = doctorInfo[0];
-            const paymentDate = moment(payment.payment_date).format('YYYY-MM-DD');
-            const deductionDetails = JSON.parse(payment.deduction_details);
+        let newTotalDeductions = Number(payment[0].total_deductions);
+        const appliedAdjustments = [];
 
-            let receiptText = `
-                Salary Receipt for ${fullname}
+        // 3. Process adjustments
+        for (const { name, adjustment } of adjustments) {
+            // Validate adjustment
+            if (typeof adjustment !== 'number' || isNaN(adjustment)) {
+                throw new Error(`Invalid adjustment value for "${name}"`);
+            }
 
-                Payment Date: ${paymentDate}
-                Gross Amount: ₹${payment.gross_amount.toFixed(2)}
-                ----------------------
-                Deductions:
-            `;
+            // Find deduction (case-insensitive)
+            const deduction = deductionDetails.find(d => 
+                d.name.toLowerCase() === name.trim().toLowerCase()
+            );
 
-            deductionDetails.forEach(deduction => {
-                receiptText += `${deduction.name}: ₹${deduction.calculated.toFixed(2)} (${deduction.type === 'percentage' ? deduction.value + '%' : 'Fixed'})
-            `;
-            });
+            if (!deduction) {
+                const availableNames = deductionDetails.map(d => d.name);
+                throw new Error(
+                    `Deduction "${name}" not found. Available: ${availableNames.join(', ')}`
+                );
+            }
 
-            receiptText += `
-                ----------------------
-                Total Deductions: ₹${newDeductions.toFixed(2)}
-                Net Salary: ₹${payment.gross_amount - newDeductions.toFixed(2)}
-            `;
+            // Calculate new value
+            const newCalculated = Number(
+                (deduction.calculated + adjustment).toFixed(2)
+            );
 
-            const mailOptions = {
-                from: 'your_email@example.com',
-                to: email,
-                subject: `Salary Receipt for ${moment().format('MMMM YYYY')}`,
-                text: receiptText
-            };
+            // Validate percentage bounds
+            if (deduction.type === 'percentage' && (newCalculated < 0 || newCalculated > 100)) {
+                throw new Error(
+                    `Percentage deduction "${deduction.name}" invalid: ${newCalculated}%`
+                );
+            }
 
-            transporter.sendMail(mailOptions, (error, info) => {
-                if (error) {
-                    console.error('Error sending receipt:', error);
-                } else {
-                    console.log('Receipt sent:', info.response);
-                }
+            // Update values
+            deduction.calculated = newCalculated;
+            newTotalDeductions = Number(
+                (newTotalDeductions + adjustment).toFixed(2)
+            );
+
+            appliedAdjustments.push({
+                name: deduction.name,
+                previous: deduction.calculated - adjustment,
+                new: deduction.calculated,
+                type: deduction.type
             });
         }
 
+        // 4. Validate net salary
+        const grossAmount = Number(payment[0].gross_amount);
+        const netSalary = Number(
+            (grossAmount - newTotalDeductions).toFixed(2)
+        );
+
+        if (netSalary < 0) {
+            throw new Error(
+                `Invalid net salary: ₹${netSalary} (Gross: ₹${grossAmount}, Deductions: ₹${newTotalDeductions})`
+            );
+        }
+
+        // 5. Update payment record
+        await connection.query(
+            `UPDATE salary_payments SET
+                total_deductions = ?,
+                deduction_details = ?,
+                status = 'approved'
+             WHERE id = ?`,
+            [newTotalDeductions, JSON.stringify(deductionDetails), paymentId]
+        );
+
+        // 6. Update doctor's income (without updated_at)
+        await connection.query(
+            `UPDATE doctors SET
+                total_income = total_income + ?
+             WHERE id = ?`,
+            [netSalary, payment[0].doctor_id]
+        );
+
+        
+
         await connection.commit();
-        res.json({ success: true, message: 'Salary approved and receipt sent!' });
+
+        res.json({
+            success: true,
+            message: 'Salary approved successfully',
+            data: {
+                paymentId,
+                grossAmount,
+                totalDeductions: newTotalDeductions,
+                netSalary,
+                adjustments: appliedAdjustments
+            }
+        });
 
     } catch (error) {
         await connection.rollback();
-        console.error('Salary approval failed:', error);
-        res.status(500).json({ success: false, message: 'Salary approval failed' });
+        
+        // Log detailed error information
+        console.error('Salary Approval Error:', {
+            paymentId,
+            error: error.message,
+            stack: error.stack,
+            adjustments: req.body.adjustments
+        });
+
+        // Determine HTTP status code
+        const statusCode = error.message.includes('not found') ? 404 : 400;
+        
+        res.status(statusCode).json({
+            success: false,
+            message: error.message.includes('percentage') 
+                ? 'Deduction percentages must be between 0-100' 
+                : error.message,
+            errorDetails: process.env.NODE_ENV === 'development'
+                ? { stack: error.stack }
+                : undefined
+        });
     } finally {
         connection.release();
     }
 };
+
 
 // 4. Deduction Management
 export const getDeductionTypes = async (req, res) => {
@@ -273,36 +366,59 @@ export const getDeductionTypes = async (req, res) => {
 
 
 
+// salaryController.js
 export const assignInitialSalary = async (req, res) => {
-    const connection = await pool.getConnection();
+    const { 
+      doctorId, 
+      baseSalary,
+      payment_frequency, // Now matches frontend
+      standardDeductions,
+      nextPaymentDate 
+    } = req.body;
+  
     try {
-        const { doctorId, baseSalary, frequency, deductions } = req.body;
-
-        await connection.beginTransaction();
-
-        const nextPayment = moment().add(1, frequency === 'monthly' ? 'month' : 'weeks').startOf(frequency === 'monthly' ? 'month' : 'week').format('YYYY-MM-DD');
-
-        await connection.query(`
-            INSERT INTO auto_salary (doctor_id, base_salary, payment_frequency, standard_deductions, next_payment_date)
-            VALUES (?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                base_salary = VALUES(base_salary),
-                payment_frequency = VALUES(payment_frequency),
-                standard_deductions = VALUES(standard_deductions),
-                next_payment_date = VALUES(next_payment_date)
-        `, [doctorId, baseSalary, frequency, JSON.stringify(deductions), nextPayment]);
-
-        await connection.commit();
-        res.status(201).json({ success: true, message: 'Initial salary assigned successfully!' });
-
+      const [doctor] = await pool.query(
+        `SELECT id FROM doctors WHERE id = ? AND verification_status = 'approved'`,
+        [doctorId]
+      );
+  
+      if (!doctor.length) {
+        return res.status(400).json({
+          success: false,
+          message: "Doctor not approved for salary configuration"
+        });
+      }
+  
+      await pool.query(`
+        INSERT INTO auto_salary 
+        (doctor_id, base_salary, payment_frequency, standard_deductions, next_payment_date)
+        VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          base_salary = VALUES(base_salary),
+          payment_frequency = VALUES(payment_frequency),
+          standard_deductions = VALUES(standard_deductions),
+          next_payment_date = VALUES(next_payment_date)
+      `, [
+        doctorId, 
+        baseSalary, 
+        payment_frequency,
+        JSON.stringify(standardDeductions),
+        nextPaymentDate
+      ]);
+  
+      res.status(201).json({ success: true });
+      
     } catch (error) {
-        await connection.rollback();
-        console.error('Error assigning initial salary:', error);
-        res.status(500).json({ success: false, message: 'Failed to assign initial salary' });
-    } finally {
-        connection.release();
+      console.error('Database error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' 
+          ? "Invalid payment frequency value (must be 'monthly' or 'bi-weekly')"
+          : 'Database operation failed'
+      });
     }
-};
+  };
+
 
 export const getPendingSalaries = async (req, res) => {
     try {
@@ -314,13 +430,22 @@ export const getPendingSalaries = async (req, res) => {
                 sp.net_amount,
                 sp.payment_date,
                 sp.deduction_details,
-                u.fullname AS doctor_name -- Changed d.fullname to u.fullname and joined with users table
+                u.fullname AS doctor_name
             FROM salary_payments sp
             JOIN doctors d ON sp.doctor_id = d.id
-            JOIN users u ON d.user_id = u.id -- Join with the users table to get the fullname
+            JOIN users u ON d.user_id = u.id
             WHERE sp.status = 'pending'
         `);
-        res.json({ success: true, data: pending });
+        
+        // Convert JSON string to object if needed
+        const formattedPending = pending.map(p => ({
+            ...p,
+            deduction_details: typeof p.deduction_details === 'string' 
+                ? JSON.parse(p.deduction_details) 
+                : p.deduction_details
+        }));
+        
+        res.json({ success: true, data: formattedPending });
     } catch (error) {
         console.error('Error fetching pending salaries:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch pending salaries', error });

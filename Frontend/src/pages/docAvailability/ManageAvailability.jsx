@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import '../../style/manageAvailable.css';
 
 const ManageAvailability = () => {
-  const token = localStorage.getItem('token'); // ✅ Fixed: token from localStorage
+  const token = localStorage.getItem('token');
   const [availability, setAvailability] = useState([]);
   const [newDay, setNewDay] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [editSlot, setEditSlot] = useState(null); // New state for editing
+  const [editSlot, setEditSlot] = useState(null); 
 
   const fetchAvailability = async () => {
     setIsLoading(true);

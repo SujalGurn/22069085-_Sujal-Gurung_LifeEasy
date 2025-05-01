@@ -1,6 +1,6 @@
-// AppointmentList.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import '../../style/doctAppointment.css';
 
 const AppointmentList = () => {
     const [appointments, setAppointments] = useState({

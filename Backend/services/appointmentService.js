@@ -49,7 +49,6 @@ const generateTokenNumber = async (doctorId, date, connection) => {
         const lastSeq = existing[0].last_token.split('-').pop();
         sequence = parseInt(lastSeq, 10) + 1;
       }
-  
       return `TKN-${String(doctorId).padStart(3,'0')}-${dateStr}-${String(sequence).padStart(4,'0')}`;
     } catch (error) {
       console.error('Token generation failed:', error);
@@ -57,60 +56,54 @@ const generateTokenNumber = async (doctorId, date, connection) => {
     }
   };
 
-const generateSecureToken = (appointment) => {
+  const generateSecureToken = (appointment) => {
     if (!process.env.JWT_SECRET) {
         throw new Error('JWT_SECRET is undefined');
     }
-    
-    console.log("appointment.appointment_date:", appointment.appointment_date);
-    console.log(" appointment.appointment_time:", appointment.appointment_time);
 
-    const appointmentDateTime = combineDateAndTime(appointment.appointment_date, appointment.appointment_time);
+    console.log("UTC Appointment Date:", appointment.appointment_date);
+    console.log("UTC Appointment Time:", appointment.appointment_time);
 
-    console.log(" parsed appointment datetime:", appointmentDateTime);
-    console.log(" typeof:", typeof appointmentDateTime);
-    
-    if (!appointmentDateTime || isNaN(appointmentDateTime.getTime())) {
-        throw new Error(`Invalid appointment datetime:\n  ${appointment.appointment_date} ${appointment.appointment_time}`);
+    // Parse inputs as UTC datetimes
+    const appointmentMoment = moment.utc(
+        `${appointment.appointment_date}T${appointment.appointment_time}`,
+        'YYYY-MM-DDTHH:mm:ss'
+    );
+
+    if (!appointmentMoment.isValid()) {
+        throw new Error(`Invalid UTC datetime: 
+          Date: ${appointment.appointment_date}
+          Time: ${appointment.appointment_time}`);
     }
 
-    const timeParts = appointment.appointment_time.split(':');
-    if (timeParts.length !== 3 || timeParts.some(part => isNaN(part))) {
-        throw new Error(`Malformed appointment time: ${appointment.appointment_time}`);
-    }
-
-    // Convert to moment objects
-    const appointmentMoment = moment(appointmentDateTime);
-    const expirationFromNow = moment().add(24, 'hours');
+    // Calculate expiration thresholds in UTC
+    const expirationFromNow = moment.utc().add(24, 'hours');
     const expirationFromAppointment = appointmentMoment.clone().add(1, 'hour');
-
+    
+    // Determine final expiration (UTC)
     const expiresAt = moment.max(expirationFromNow, expirationFromAppointment);
 
-    if (!expiresAt.isValid()) {
-        throw new Error(`Invalid expiration calculation: 
-          From Now: ${expirationFromNow.toString()}
-          From Appointment: ${expirationFromAppointment.toString()}`);
-    }
+    console.log('UTC Expiration Calculation:', {
+        now: moment.utc().format(),
+        appointment: appointmentMoment.format(),
+        expiresAt: expiresAt.format()
+    });
 
-    // Convert expiresAt to MySQL-compatible format: 'YYYY-MM-DD HH:MM:SS'
-    const expiresAtFormatted = expiresAt.format('YYYY-MM-DD HH:mm:ss');
-
+    // Create payload with UTC timestamps
     const payload = {
         appointmentId: appointment.id,
         doctorId: appointment.doctor_id,
         patientId: appointment.patient_id,
         version: 1,
-        iat: moment().unix(),
-        exp: expiresAt.unix()
+        iat: moment.utc().unix(),  // UTC issued at
+        exp: expiresAt.unix()       // UTC expiration
     };
 
-    // Return the token and expiration formatted as MySQL datetime
-    return { 
+    return {
         qrToken: jwt.sign(payload, process.env.JWT_SECRET, { algorithm: 'HS256' }),
-        expiresAt: expiresAtFormatted // use formatted date here
+        expiresAt: expiresAt.utc().format('YYYY-MM-DD HH:mm:ss')
     };
 };
-
 
 // Main appointment confirmation service
 export const confirmAppointmentService = async (appointmentId, connection) => {

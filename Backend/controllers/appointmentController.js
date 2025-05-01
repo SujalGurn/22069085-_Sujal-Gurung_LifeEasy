@@ -263,20 +263,33 @@ export const confirmAppointmentHandler = async (req, res) => {
 
 export const getAllDoctors = async (req, res) => {
     try {
-      const [rows] = await pool.query(`
-        SELECT d.id, u.fullname
-        FROM doctors d
-        JOIN users u ON d.user_id = u.id
-        WHERE d.verification_status = 'approved'
-        AND u.role = 'doctor' 
-      `);
-  
-      res.status(200).json({ success: true, doctors: rows });
+        const [rows] = await pool.query(`
+            SELECT 
+                d.id,
+                u.fullname,
+                u.contact,
+                u.email,
+                d.specialization,
+                d.license_number,
+                d.about
+            FROM doctors d
+            JOIN users u ON d.user_id = u.id
+            WHERE d.verification_status = 'approved'
+            AND u.role = 'doctor'
+        `);
+
+        res.status(200).json({ 
+            success: true, 
+            doctors: rows 
+        });
     } catch (error) {
-      console.error('Error fetching doctors:', error);
-      res.status(500).json({ success: false, message: 'Failed to fetch doctors' });
+        console.error('Error fetching doctors:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch doctors' 
+        });
     }
-  };
+};
 
 
 
@@ -446,73 +459,48 @@ const errorMessages = {
     JsonWebTokenError: 'Invalid QR code',
     NotBeforeError: 'QR code not yet valid'
 };
-
 export const verifyAppointment = async (req, res) => {
     const connection = await pool.getConnection();
-    const { token } = req.query;
-    const verificationId = crypto.randomUUID();
-
-    console.log(`[${verificationId}] Verification Started`, {
-        token: token?.slice(0,20) + '...'
-    });
-
     try {
         await connection.beginTransaction();
 
-        // 1. JWT Verification
+        // Verify with UTC timestamps
         const decoded = jwt.verify(token, process.env.JWT_SECRET, {
             algorithms: ['HS256'],
-            clockTolerance: 30
+            clockTimestamp: Math.floor(Date.now() / 1000)
         });
-        console.log('Decoded:', decoded);
-        
 
-        // 2. Database Check
+        // Debug logs
+        console.log('JWT Expiry:', new Date(decoded.exp * 1000).toISOString());
 
-const [appointment] = await connection.query(`
-    SELECT 
-      a.*,
-      u_p.fullname AS patient_name,
-      u_d.fullname AS doctor_name,
-      UNIX_TIMESTAMP(CONVERT_TZ(a.expires_at, '+00:00', '+05:45')) AS expires_ts,
-      UNIX_TIMESTAMP(NOW()) AS current_ts
-    FROM appointments a
-    JOIN users u_p ON a.patient_id = u_p.id
-    JOIN doctors d ON a.doctor_id = d.id
-    JOIN users u_d ON d.user_id = u_d.id
-    WHERE 
-      a.id = ? 
-      AND a.qr_token = ?
-      AND a.status = 'confirmed'
-      AND a.is_used = 0
-      AND CONVERT_TZ(a.expires_at, '+00:00', '+05:45') > NOW()
-    FOR UPDATE
-  `, [decoded.appointmentId, token]);
-
-        console.log(`[${verificationId}] DB Lookup Raw Result`, appointment);
-
-        const debugAppointment = await connection.query(`
-            SELECT id, qr_token, status, is_used, expires_at
+        const [appointment] = await connection.query(`
+            SELECT 
+                expires_at,
+                UNIX_TIMESTAMP(expires_at) AS expires_utc,
+                UNIX_TIMESTAMP(UTC_TIMESTAMP()) AS current_utc
             FROM appointments
-            WHERE id = ?
-          `, [decoded.appointmentId]);
-          
-          console.log(`[${verificationId}] Debug Appointment Row`, debugAppointment);
-              
-        // 3. Validity Checks
+            WHERE id = ? 
+            AND qr_token = ?
+            AND status = 'confirmed'
+            AND is_used = 0
+            AND expires_at > UTC_TIMESTAMP()
+            FOR UPDATE
+        `, [decoded.appointmentId, token]);
+
+        console.log('DB Expiry:', appointment[0]?.expires_at)
+
         if (!appointment.length) {
-            console.log(`[${verificationId}] No Matching Appointment`);
             await connection.rollback();
             return res.status(401).json({
                 success: false,
                 code: 'NO_RECORD',
-                message: "Invalid appointment"
+                message: "Invalid or expired appointment"
             });
         }
 
-        // 4. Time Check
-        const { expires_ts, current_ts } = appointment[0];
-        if (expires_ts <= current_ts) {
+        // 3. Direct UTC Epoch Comparison
+        const { expires_utc, current_utc } = appointment[0];
+        if (expires_utc <= current_utc) {
             await connection.rollback();
             return res.status(401).json({
                 success: false,
@@ -521,7 +509,7 @@ const [appointment] = await connection.query(`
             });
         }
 
-        // 5. Mark as Used
+        // 4. Mark as used
         await connection.query(`
             UPDATE appointments 
             SET is_used = 1, 
@@ -531,48 +519,18 @@ const [appointment] = await connection.query(`
 
         await connection.commit();
 
-        console.log('Verification Parameters:', {
-            appointmentId: decoded.appointmentId,
-            token: token.slice(0, 20) + '...',
-            currentUTC: moment().utc().format(),
-            decoded: decoded // JWT payload
-          });
-          
-          console.log('Database Results:', {
-            expiresAt: appointment[0]?.expires_at,
-            status: appointment[0]?.status,
-            isUsed: appointment[0]?.is_used
-          });
-        
-          return res.json({
+        return res.json({
             success: true,
             code: 'VERIFIED',
-            appointmentId: decoded.appointmentId,
-            patient: {
-              id: appointment[0].patient_id,
-              name: appointment[0].patient_name
-            },
-            doctor: {
-              id: appointment[0].doctor_id,
-              name: appointment[0].doctor_name
-            },
-            date: moment(appointment[0].appointment_date).format('YYYY-MM-DD'),
-            time: appointment[0].appointment_time
-          });
-          
+            appointmentId: decoded.appointmentId
+        });
 
     } catch (error) {
         await connection.rollback();
-        console.error(`[${verificationId}] Verification Failed`, error);
-
-        const errorCode = error.name === 'TokenExpiredError' ? 'EXPIRED' :
-                        error.name === 'JsonWebTokenError' ? 'INVALID_TOKEN' : 
-                        'SYSTEM_ERROR';
-
         return res.status(401).json({
             success: false,
-            code: errorCode,
-            message: 'Invalid or expired token' 
+            code: 'VERIFICATION_FAILED',
+            message: error.message
         });
     } finally {
         connection.release();
@@ -580,9 +538,6 @@ const [appointment] = await connection.query(`
 };
 
 
-
-
-// Shared filter function
 const getDoctorFilter = async (user, connection) => {
     if (user.role === 'doctor') {
         const [doctor] = await connection.query(
@@ -708,4 +663,98 @@ const handleError = (res, error, context) => {
         success: false, 
         message: `Failed to fetch ${context}: ${error.message}` 
     });
+};
+
+
+
+
+
+
+export const getAppointmentDetails = async (req, res) => {
+    try {
+      const appointmentId = parseInt(req.params.id);
+      
+      if (isNaN(appointmentId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid appointment ID" 
+        });
+      }
+  
+      const [results] = await pool.query(
+        `SELECT a.*,
+          du.fullname AS doctor_name,  // Corrected to use du alias
+          u.fullname AS patient_name,
+          d.specialization
+         FROM appointments a
+         JOIN doctors d ON a.doctor_id = d.id
+         JOIN users du ON d.user_id = du.id  // Doctor's user details
+         JOIN users u ON a.patient_id = u.id // Patient's user details
+         WHERE a.id = ?`,
+        [appointmentId]
+      );
+      if (results.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Appointment not found"
+        });
+      }
+  
+      const appointment = {
+        ...results[0],
+        date: moment(results[0].date).format("YYYY-MM-DD"),
+        time: results[0].time.slice(0, 5) // HH:mm format
+      };
+  
+      res.json({ success: true, appointment });
+  
+    } catch (error) {
+      console.error("Appointment error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch appointment details"
+      });
+    }
+  };
+
+  export const getPatientAppointments = async (req, res) => {
+    try {
+        // Get patient ID directly from users table
+        const userId = req.user.id;
+
+        const [appointments] = await pool.query(`
+            SELECT 
+                a.id,
+                a.appointment_date AS date,
+                a.appointment_time AS time,
+                a.reason,
+                a.status,
+                a.notes,
+                u.fullname AS doctor_name,
+                d.specialization
+            FROM appointments a
+            JOIN doctors d ON a.doctor_id = d.id
+            JOIN users u ON d.user_id = u.id
+            WHERE a.patient_id = ?  -- Direct user ID match
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        `, [userId]);
+
+        const formattedAppointments = appointments.map(appointment => ({
+            ...appointment,
+            date: moment(appointment.date).format("YYYY-MM-DD"),
+            time: appointment.time.slice(0, 5)
+        }));
+
+        res.json({ 
+            success: true, 
+            appointments: formattedAppointments 
+        });
+
+    } catch (error) {
+        console.error("Error fetching patient appointments:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch appointments" 
+        });
+    }
 };

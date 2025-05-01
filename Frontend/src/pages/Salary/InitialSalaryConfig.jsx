@@ -1,6 +1,7 @@
-// src/components/InitialSalaryConfig.jsx
 import React, { useState } from 'react';
 import { useDoctors } from '../../components/useDoctors';
+import '../../style/initialSalaryConfig.css';
+import moment from 'moment';
 
 const InitialSalaryConfig = () => {
     const { doctors, loading, error } = useDoctors();
@@ -11,16 +12,25 @@ const InitialSalaryConfig = () => {
     const [nextPaymentDate, setNextPaymentDate] = useState('');
     const [saveStatus, setSaveStatus] = useState(null);
 
+    // Handler functions remain the same
     const handleDoctorChange = (event) => setSelectedDoctorId(event.target.value);
     const handleBaseSalaryChange = (event) => setBaseSalary(event.target.value);
     const handlePaymentFrequencyChange = (event) => setPaymentFrequency(event.target.value);
     const handleNextPaymentDateChange = (event) => setNextPaymentDate(event.target.value);
 
     const handleDeductionChange = (index, event) => {
+        const { name, value } = event.target;
         const newDeductions = [...standardDeductions];
-        newDeductions[index][event.target.name] = event.target.value;
+        
+        // Numeric validation for value field
+        if (name === 'value') {
+          if (!/^\d*\.?\d*$/.test(value)) return; // Allow numbers and decimals only
+          if (newDeductions[index].type === 'percentage' && parseFloat(value) > 100) return;
+        }
+      
+        newDeductions[index][name] = value;
         setStandardDeductions(newDeductions);
-    };
+      };
 
     const handleAddDeduction = () => {
         setStandardDeductions([...standardDeductions, { name: '', value: '', type: 'fixed' }]);
@@ -33,174 +43,249 @@ const InitialSalaryConfig = () => {
     };
 
     const handleSaveConfig = async () => {
-        setSaveStatus('loading');
-        try {
-            const configData = {
-                doctorId: selectedDoctorId,
-                baseSalary: parseFloat(baseSalary),
-                paymentFrequency,
-                standardDeductions,
-                nextPaymentDate,
-            };
+        // Validate required fields first
+        if (!selectedDoctorId || !baseSalary || !paymentFrequency) {
+            alert('Please select a doctor and fill all required fields');
+            return;
+        }
 
-            const response = await fetch('/api/salary/initial-config', {
+        // Validate deductions
+        const deductionsValid = standardDeductions.every(d => 
+            d.name.trim() && 
+            !isNaN(d.value) && 
+            ["fixed", "percentage"].includes(d.type) &&
+            (d.type !== 'percentage' || (d.value >= 0 && d.value <= 100))
+        );
+
+        if (!deductionsValid) {
+            alert("Invalid deduction format. Please check:\n- All deductions need a name\n- Valid numeric value\n- Percentage must be between 0-100");
+            return;
+        }
+
+        // Validate date format
+        if (nextPaymentDate && !moment(nextPaymentDate, 'YYYY-MM-DD', true).isValid()) {
+            alert('Invalid date format. Please use YYYY-MM-DD format.');
+            return;
+        }
+
+        setSaveStatus('loading');
+        
+        try {
+            // Transform deductions to proper format
+            const transformedDeductions = standardDeductions
+            .filter(d => d.name.trim())
+            .map(d => ({
+              name: d.name.trim(),
+              type: d.type,
+              value: d.type === 'percentage' 
+                ? parseFloat(d.value) / 100  // Convert percentage to decimal
+                : parseFloat(d.value)
+            }));
+
+            const configData = {
+      doctorId: selectedDoctorId,
+      baseSalary: parseFloat(baseSalary),
+      payment_frequency: paymentFrequency,
+      standardDeductions: transformedDeductions, // Now an array
+      nextPaymentDate: nextPaymentDate || moment()
+        .add(paymentFrequency === 'monthly' ? 1 : 2, 'weeks')
+        .format('YYYY-MM-DD')
+    };
+
+            const response = await fetch('/api/salaries/assign-initial', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: JSON.stringify(configData),
             });
 
-            if (response.ok) {
-                setSaveStatus('success');
-                alert('Salary configuration saved successfully!');
+            const responseData = await response.json().catch(() => ({
+                message: 'Invalid server response'
+            }));
+
+            if (!response.ok) {
+                throw new Error(responseData.message || 'Failed to save configuration');
+            }
+
+            setSaveStatus('success');
+            alert('Salary configuration saved successfully!');
+            
+            // Reset form with delay to show success status
+            setTimeout(() => {
                 setBaseSalary('');
                 setPaymentFrequency('monthly');
                 setStandardDeductions([{ name: '', value: '', type: 'fixed' }]);
                 setNextPaymentDate('');
                 setSelectedDoctorId('');
-            } else {
-                const errorData = await response.json();
-                setSaveStatus('error');
-                alert(`Failed: ${errorData.message || 'Internal Server Error'}`);
-            }
+                setSaveStatus(null);
+            }, 1500);
+
         } catch (error) {
             console.error('Save error:', error);
             setSaveStatus('error');
-            alert('Failed to save configuration. Check your network.');
+            alert(`Error: ${error.message || 'Failed to save configuration. Check your network connection.'}`);
         }
     };
 
-    if (loading) return <p className="text-center">Loading doctors...</p>;
-    if (error) return <p className="text-red-500 text-center">Error loading doctors: {error}</p>;
+    if (loading) {
+        return (
+            <div className="salary-config-container">
+                <div className="salary-config-loading">
+                    <div className="salary-config-spinner"></div>
+                    <p className="salary-config-loading-text">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="salary-config-container">
+                <div className="salary-config-error">
+                    <p className="salary-config-error-text">Error: {error}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="max-w-3xl mx-auto p-6 bg-white shadow-md rounded-xl mt-8">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Initial Salary Configuration</h2>
-
-            <div className="mb-4">
-                <label htmlFor="doctor" className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Doctor
-                </label>
-                <select
-                    id="doctor"
-                    value={selectedDoctorId}
-                    onChange={handleDoctorChange}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2"
-                >
-                    <option value="">-- Select a Doctor --</option>
-                    {doctors.map(doctor => (
-                        <option key={doctor.id} value={doctor.id}>
-                            {doctor.fullname}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            {selectedDoctorId && (
-                <div className="space-y-6">
-                    <div>
-                        <label htmlFor="baseSalary" className="block text-sm font-medium text-gray-700 mb-1">
-                            Base Salary
-                        </label>
-                        <input
-                            type="number"
-                            id="baseSalary"
-                            value={baseSalary}
-                            onChange={handleBaseSalaryChange}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="paymentFrequency" className="block text-sm font-medium text-gray-700 mb-1">
-                            Payment Frequency
-                        </label>
-                        <select
-                            id="paymentFrequency"
-                            value={paymentFrequency}
-                            onChange={handlePaymentFrequencyChange}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
-                        >
-                            <option value="monthly">Monthly</option>
-                            <option value="bi-weekly">Bi-Weekly</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <h3 className="text-lg font-semibold mb-2">Standard Deductions</h3>
-                        {standardDeductions.map((deduction, index) => (
-                            <div key={index} className="flex gap-2 mb-2">
-                                <input
-                                    type="text"
-                                    name="name"
-                                    placeholder="Deduction Name"
-                                    value={deduction.name}
-                                    onChange={(e) => handleDeductionChange(index, e)}
-                                    className="flex-1 border border-gray-300 rounded-md px-3 py-2"
-                                />
-                                <input
-                                    type="number"
-                                    name="value"
-                                    placeholder="Value"
-                                    value={deduction.value}
-                                    onChange={(e) => handleDeductionChange(index, e)}
-                                    className="w-24 border border-gray-300 rounded-md px-3 py-2"
-                                />
-                                <select
-                                    name="type"
-                                    value={deduction.type}
-                                    onChange={(e) => handleDeductionChange(index, e)}
-                                    className="w-32 border border-gray-300 rounded-md px-3 py-2"
-                                >
-                                    <option value="fixed">Fixed</option>
-                                    <option value="percentage">Percentage</option>
-                                </select>
-                                {standardDeductions.length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveDeduction(index)}
-                                        className="text-red-600 hover:underline"
-                                    >
-                                        Remove
-                                    </button>
-                                )}
-                            </div>
+        <div className="salary-config-container">
+            <h2 className="salary-config-title">Salary Configuration</h2>
+            <div className="salary-config-card">
+                <div className="form-group">
+                    <label htmlFor="doctor" className="form-label required">Doctor</label>
+                    <select
+                        id="doctor"
+                        value={selectedDoctorId}
+                        onChange={handleDoctorChange}
+                        className="form-select"
+                        required
+                    >
+                        <option value="">Select Doctor</option>
+                        {doctors.map(doctor => (
+                            <option key={doctor.id} value={doctor.id}>
+                                {doctor.fullname}
+                            </option>
                         ))}
-                        <button
-                            type="button"
-                            onClick={handleAddDeduction}
-                            className="mt-2 text-sm text-blue-600 hover:underline"
-                        >
-                            + Add Deduction
-                        </button>
-                    </div>
-
-                    <div>
-                        <label htmlFor="nextPaymentDate" className="block text-sm font-medium text-gray-700 mb-1">
-                            Next Payment Date
-                        </label>
-                        <input
-                            type="date"
-                            id="nextPaymentDate"
-                            value={nextPaymentDate}
-                            onChange={handleNextPaymentDateChange}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
-                        />
-                    </div>
-
-                    <div className="pt-4">
-                        <button
-                            type="button"
-                            onClick={handleSaveConfig}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-md"
-                        >
-                            Save Configuration
-                        </button>
-                        {saveStatus === 'loading' && <p className="text-sm mt-2 text-gray-600">Saving...</p>}
-                        {saveStatus === 'success' && <p className="text-sm mt-2 text-green-600">Configuration saved!</p>}
-                        {saveStatus === 'error' && <p className="text-sm mt-2 text-red-600">Failed to save.</p>}
-                    </div>
+                    </select>
                 </div>
-            )}
+
+                {selectedDoctorId && (
+                    <div className="form-section">
+                        <div className="form-group">
+                            <label htmlFor="baseSalary" className="form-label required">Base Salary</label>
+                            <input
+                                type="number"
+                                id="baseSalary"
+                                value={baseSalary}
+                                onChange={handleBaseSalaryChange}
+                                className="form-input"
+                                placeholder="Enter amount"
+                                min="0"
+                                step="100"
+                                required
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="paymentFrequency" className="form-label required">Payment Frequency</label>
+                            <select
+                                id="paymentFrequency"
+                                value={paymentFrequency}
+                                onChange={handlePaymentFrequencyChange}
+                                className="form-select"
+                                required
+                            >
+                                <option value="monthly">Monthly</option>
+                                <option value="bi-weekly">Bi-Weekly</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <h3 className="form-subheading">Deductions</h3>
+                            {standardDeductions.map((deduction, index) => (
+                                <div key={index} className="deduction-row">
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        placeholder="Name"
+                                        value={deduction.name}
+                                        onChange={(e) => handleDeductionChange(index, e)}
+                                        className="form-input deduction-name"
+                                        required
+                                    />
+                                    <input
+  type="number"
+  name="value"
+  placeholder="Value"
+  value={deduction.value}
+  onChange={(e) => handleDeductionChange(index, e)}
+  className="form-input deduction-value"
+  min="0"
+  max={deduction.type === 'percentage' ? "100" : undefined}
+  step={deduction.type === 'percentage' ? "0.1" : "1"}
+  required
+/>
+{deduction.type === 'percentage' && <span className="percentage-suffix">%</span>}
+                                    <select
+                                        name="type"
+                                        value={deduction.type}
+                                        onChange={(e) => handleDeductionChange(index, e)}
+                                        className="form-select deduction-type"
+                                        required
+                                    >
+                                        <option value="fixed">Fixed</option>
+                                        <option value="percentage">Percentage</option>
+                                    </select>
+                                    {standardDeductions.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveDeduction(index)}
+                                            className="deduction-remove"
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={handleAddDeduction}
+                                className="deduction-add"
+                            >
+                                Add Deduction
+                            </button>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="nextPaymentDate" className="form-label">Next Payment Date</label>
+                            <input
+                                type="date"
+                                id="nextPaymentDate"
+                                value={nextPaymentDate}
+                                onChange={handleNextPaymentDateChange}
+                                className="form-input"
+                                min={moment().format('YYYY-MM-DD')}
+                            />
+                        </div>
+
+                        <div className="form-actions">
+                            <button
+                                type="button"
+                                onClick={handleSaveConfig}
+                                className="save-button"
+                                disabled={saveStatus === 'loading'}
+                            >
+                                {saveStatus === 'loading' ? 'Saving...' : 'Save'}
+                            </button>
+                            {saveStatus === 'success' && <p className="status-text success">Saved successfully!</p>}
+                            {saveStatus === 'error' && <p className="status-text error">Error saving configuration</p>}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

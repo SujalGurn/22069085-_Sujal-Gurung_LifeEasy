@@ -40,3 +40,28 @@ export const getAdminStats = async (req, res) => {
     });
   }
 };
+
+export const getAppointmentTrends = async (req, res) => {
+  try {
+      const [results] = await pool.query(`
+          SELECT 
+              DATE_FORMAT(appointment_date, '%Y-%m') AS month,
+              COUNT(*) AS appointments
+          FROM appointments
+          WHERE appointment_date >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+          GROUP BY month
+          ORDER BY month ASC
+      `);
+
+      res.status(200).json({
+          success: true,
+          trend: results
+      });
+  } catch (error) {
+      console.error('Appointment trend error:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to fetch appointment trends'
+      });
+  }
+};

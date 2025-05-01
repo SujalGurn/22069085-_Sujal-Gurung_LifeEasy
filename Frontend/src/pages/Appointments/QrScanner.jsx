@@ -9,6 +9,7 @@ const QrScanner = () => {
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [lastScanned, setLastScanned] = useState(null);
+  const [isScannerActive, setIsScannerActive] = useState(false);
   const [isScannerStarting, setIsScannerStarting] = useState(true);
   const navigate = useNavigate();
   const html5QrCodeRef = useRef(null);
@@ -22,6 +23,11 @@ const QrScanner = () => {
   lastScannedRef.current = lastScanned;
 
   const handleScan = useCallback(async (data) => {
+    if (!data.startsWith('eyJ')) { // Simple JWT format check
+      setError('Invalid QR code format');
+      return;
+    }
+
     setProcessing(true);
     setError('');
     setLastScanned(data);
@@ -33,29 +39,21 @@ const QrScanner = () => {
         timeout: 5000,
         cancelToken: cancelTokenRef.current.token
       });
-      // /appointment/verified
+
       const result = response.data;
       if (result.success) {
-        await html5QrCodeRef.current?.stop();
+        await safeStopScanner();
         navigate(`/booking-details/${result.appointmentId}`);
-
-;
         return;
       }
       setError(result.message || 'Verification failed');
-      setLastScanned(null); // Reset to allow rescan
+      setLastScanned(null);
     } catch (err) {
       if (!axios.isCancel(err)) {
-        let errorMessage = 'Scan failed. Please try again.';
-        if (err.response) {
-          errorMessage = err.response.data?.message || `Error: ${err.response.statusText}`;
-        } else if (err.request) {
-          errorMessage = 'No response from server';
-        } else {
-          errorMessage = err.message;
-        }
+        const errorMessage = err.response?.data?.message || 
+          err.request ? 'No response from server' : err.message;
         setError(errorMessage);
-        setLastScanned(null); // Reset to allow rescan
+        setLastScanned(null);
       }
     } finally {
       setProcessing(false);
@@ -65,23 +63,32 @@ const QrScanner = () => {
   const handleScanRef = useRef(handleScan);
   handleScanRef.current = handleScan;
 
+  const safeStopScanner = async () => {
+    try {
+      if (html5QrCodeRef.current?.isScanning()) {
+        await html5QrCodeRef.current.stop();
+        html5QrCodeRef.current.clear();
+      }
+    } catch (error) {
+      console.debug('Safe stop error:', error.message);
+    } finally {
+      setIsScannerActive(false);
+    }
+  };
+
   const startScanner = useCallback(async () => {
     try {
       setIsScannerStarting(true);
       setError('');
-      
+      await safeStopScanner();
+
       const devices = await Html5Qrcode.getCameras();
       if (!devices?.length) {
         throw new Error('No cameras found');
       }
 
-      if (html5QrCodeRef.current) {
-        await html5QrCodeRef.current.stop();
-        html5QrCodeRef.current.clear();
-      }
-
-      const cameraId = devices[0].id;
       html5QrCodeRef.current = new Html5Qrcode(qrRegionId);
+      const cameraId = devices[0].id;
 
       await html5QrCodeRef.current.start(
         cameraId,
@@ -99,32 +106,37 @@ const QrScanner = () => {
           console.debug('QR scanner error:', errorMsg);
         }
       );
+
+      setIsScannerActive(true);
       setIsScannerStarting(false);
     } catch (err) {
       setError(err.message || 'Unable to access camera');
+      setIsScannerActive(false);
       setIsScannerStarting(false);
       console.error('Scanner error:', err);
     }
   }, []);
 
   const handleRetry = async () => {
-    if (html5QrCodeRef.current) {
-      await html5QrCodeRef.current.stop().catch(() => {});
-      html5QrCodeRef.current.clear();
-    }
+    await safeStopScanner();
     await startScanner();
   };
 
   useEffect(() => {
-    startScanner();
+    let isMounted = true;
+    
+    const initializeScanner = async () => {
+      if (isMounted) {
+        await startScanner();
+      }
+    };
+
+    initializeScanner();
+
     return () => {
-      if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
-        html5QrCodeRef.current.clear();
-      }
-      if (cancelTokenRef.current) {
-        cancelTokenRef.current.cancel('Component unmounted');
-      }
+      isMounted = false;
+      cancelTokenRef.current?.cancel('Component unmounted');
+      safeStopScanner();
     };
   }, [startScanner]);
 
@@ -150,14 +162,12 @@ const QrScanner = () => {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-center">
             <p className="text-red-600 font-medium">{error}</p>
-            {error.includes('camera') && (
-              <button
-                onClick={handleRetry}
-                className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Retry Camera Access
-              </button>
-            )}
+            <button
+              onClick={handleRetry}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
           </div>
         )}
 

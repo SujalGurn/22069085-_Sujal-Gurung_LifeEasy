@@ -1,47 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import styled from 'styled-components';
 import { Button } from '../../components/ui/button';
 import Input from '../../components/ui/input';
-
-const EditProfileContainer = styled.div`
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-`;
-
-const DynamicList = styled.div`
-  margin: 1rem 0;
-
-  .list-item {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr) auto;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    align-items: center;
-
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .add-form {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-    margin-top: 1rem;
-  }
-`;
-
-const ActionBar = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid #e5e7eb;
-  flex-wrap: wrap;
-`;
+import '../../style/editDoctor.css';
 
 const EditDoctorProfile = () => {
   const { id } = useParams();
@@ -188,11 +150,11 @@ const EditDoctorProfile = () => {
      JSON.stringify(profile.qualifications) !== JSON.stringify(initialProfile.qualifications) ||
      JSON.stringify(profile.experience) !== JSON.stringify(initialProfile.experience));
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div style={{ color: 'red', padding: '1rem' }}>Error: {error}</div>;
+  if (loading) return <div className="loading">Loading...</div>;
+  if (error) return <div className="error-message">Error: {error}</div>;
 
   return (
-    <EditProfileContainer>
+    <div className="edit-profile-container">
       <h1>Edit Profile - Dr. {profile?.fullname}</h1>
 
       <div>
@@ -260,7 +222,7 @@ const EditDoctorProfile = () => {
 
       <div>
         <h2>Qualifications</h2>
-        <DynamicList>
+        <div className="dynamic-list">
           {profile.qualifications.map((q) => (
             <div key={q.id} className="list-item">
               <Input value={q.qualification} disabled />
@@ -313,12 +275,12 @@ const EditDoctorProfile = () => {
               </Button>
             </div>
           </div>
-        </DynamicList>
+        </div>
       </div>
 
       <div>
         <h2>Experience</h2>
-        <DynamicList>
+        <div className="dynamic-list">
           {profile.experience.map((exp) => (
             <div key={exp.id} className="list-item">
               <Input value={exp.position} disabled />
@@ -371,10 +333,10 @@ const EditDoctorProfile = () => {
               </Button>
             </div>
           </div>
-        </DynamicList>
+        </div>
       </div>
 
-      <ActionBar>
+      <div className="action-bar">
         <Button 
           onClick={handleSaveProfile} 
           disabled={isSaving || !hasChanges}
@@ -388,14 +350,14 @@ const EditDoctorProfile = () => {
         >
           Cancel
         </Button>
-      </ActionBar>
+      </div>
 
       {error && (
-        <div style={{ color: 'red', marginTop: '1rem' }}>
+        <div className="error-message">
           Error: {error}
         </div>
       )}
-    </EditProfileContainer>
+    </div>
   );
 };
 

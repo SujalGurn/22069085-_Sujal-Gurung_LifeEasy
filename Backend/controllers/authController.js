@@ -36,6 +36,7 @@ export const register = async (req, res) => {
                 console.error("Error creating patient profile after registration:", patientResult.message);
                 // You might want to handle this error (e.g., maybe delete the user or inform the user)
             }
+            
             return res.status(200).json(userResponse);
         } else {
             return res.status(400).json(userResponse);

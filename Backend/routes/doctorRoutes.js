@@ -10,8 +10,10 @@ import {
     verifyAppointment,
     getConfirmedAppointments,
     getCompletedAppointments,
+    getAppointmentDetails,
+    getPatientAppointments
 } from '../controllers/appointmentController.js';
-import { authenticate, checkRole, isDoctor } from '../middleware/authMiddleware.js';
+import { authenticate, checkRole, isDoctor, isSameDoctor } from '../middleware/authMiddleware.js';
 import { 
     addAvailability,
     updateAvailability,
@@ -28,7 +30,7 @@ import {
     getDoctorIdByUserId,
     getDoctorProfile,
     deleteQualification,
-    deleteExperience
+    deleteExperience,
 } from '../controllers/doctorController.js'; 
 import uploadMedicalReport from '../middleware/uploadMedicalReport.js'; 
 import { getPatients } from '../controllers/adminController.js';
@@ -47,17 +49,15 @@ router.param('id', (req, res, next, id) => {
     next();
 });
 
+
 // Public routes
 router.get('/doctors', getAllDoctors);
 router.get('/doctors/by-user/:userId', getDoctorIdByUserId);
 // Doctor profile routes (specific first)
-router.get('/doctors/:id/profile', getDoctorProfile);  // Specific profile endpoint
+router.get('/doctors/:id/profile', getDoctorProfile);
+router.get('/doctors/:id/profile', authenticate, isDoctor, isSameDoctor, getDoctorProfile);  
 router.get('/doctors/:id', getDoctorDetails);
-router.put('/doctors/:id/profile', 
-    authenticate, 
-    checkRole(['doctor', 'admin']), 
-    updateDoctorProfile
-  );          // General doctor details
+        // General doctor details
 // Protected routes
 router.get('/doctors/:id/availability/days', authenticate, getAvailableDates);
 router.get('/doctors/:id/availability/times', authenticate, getAvailableTimeSlots);
@@ -69,7 +69,9 @@ router.get('/appointments/pending', authenticate, checkRole(['doctor', 'admin'])
 router.put('/appointments/:id/reject', authenticate, checkRole(['doctor', 'admin']), rejectAppointmentHandler);
 router.get('/appointments/confirmed', authenticate, checkRole(['doctor', 'admin']), getConfirmedAppointments);
 router.get('/appointments/completed', authenticate, checkRole(['doctor', 'admin']), getCompletedAppointments);
+router.get('/appointments/patient', authenticate, getPatientAppointments);
 
+router.get('/appointments/:id', authenticate, getAppointmentDetails);
 // Availability management
 router.post('/availability', authenticate, checkRole(['doctor', 'admin']), addAvailability);
 router.get('/availability', authenticate, checkRole(['doctor', 'admin']), getDoctorAvailability);

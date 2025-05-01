@@ -10,7 +10,8 @@ const pool=mysql2.createPool({
     database:process.env.DB_NAME,
     connectionLimit:10,
     queueLimit:0,
-    waitForConnections:true
+    waitForConnections:true,
+      timezone: 'Z'
 });
 
 const checkConnection=async()=>{

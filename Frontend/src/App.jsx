@@ -11,6 +11,7 @@ import { UserProvider} from "./UserContext";
 import { UserContext } from './UserContext';
 import AppLayout from "./components/AppLayout";
 import DoctorLayout from "./components/DoctorLayout";
+import UserAppointments from './pages/Appointments/PatientsAppointments';
 
 const Login = lazy(() => import("./pages/Login"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -49,6 +50,8 @@ const DoctorProfile = lazy(() => import("./pages/doctors/DoctorProfile.jsx")) //
 const EditDoctorProfile = lazy(() => import("./pages/doctors/EditDoctorProfile.jsx")) // Assuming you'll create this
 const Loader = lazy(() => import("./components/Loader.jsx")) // Assuming you'll create this
 const ErrorMessage = lazy(() => import("./components/ErrorMessage.jsx")) // Assuming you'll create this
+const Homes = lazy(() => import("./pages/HomePage/Homes.jsx")) // Assuming you'll create this
+const PatientsAppointments = lazy(() => import("./pages/Appointments/PatientsAppointments.jsx")) // Assuming you'll create this
 
 const App = () => {
     return (
@@ -63,6 +66,9 @@ const App = () => {
                         <Route path="/signup" element={<Signup />} />
                         <Route path="/Verification" element={<OptVerify />} />
                         <Route path="/doctorSignup" element={<DoctorSignup />} />
+                        <Route path="/doctors/:id/profile" element={<DoctorProfile />} />
+                        <Route path="/homes" element={<Homes />} />
+                        <Route path="/booking-details/:id" element={<BookingDetail />} />
 
                         {/* Admin routes with layout */}
                         <Route element={
@@ -75,7 +81,6 @@ const App = () => {
                             <Route path="/admin-manage-availability" element={<AdminManageAvailability />} />
                             <Route path="/doctorAd" element={<Doctors />} />
                             <Route path="/qr-scanner" element={<QrScanner />} />
-                            <Route path="/booking-details/:id" element={<BookingDetail />} />
                             <Route path="/salaryForm" element={<SalaryConfig />} />
                             <Route path="/salaryHistory" element={<SalaryHistory />} />
                             <Route path="/initialSalaryConfig" element={<InitialSalaryConfig />} />
@@ -100,22 +105,16 @@ const App = () => {
                             <Route path="/manage-availability" element={<ManageAvailability />} />
                             <Route path="/appointmentList" element={<AppointmentList />} />
                             <Route path="/patients" element={<Patients />} /> 
-                            {/* Doctor can add medical history for a patient */}
                             <Route path="/add-medicalHistory" element={<AddMedicalHistory />} />
-                            {/* Doctor can view medical history for a patient */}
                             <Route path="/patients/:patientId/medical-history" element={<ViewPatientMedicalHistory />} />
                             <Route path="/patients/:patientId/add-medical-history" element={<AddMedicalHistory />} />
                             <Route path="/patientsList" element={<DoctorPatientList />} />
                             <Route path="/doctors/:id/edit-profile" element={<EditDoctorProfile />} />
                             <Route path="/Loader" element={<Loader />} />
                             <Route path="/ErrorMessage" element={<ErrorMessage />} />
-
-
-                            {/* Doctor can edit a specific medical history entry */}
                             <Route path="/edit-medicalHistory" element={<EditMedicalHistory />} />
                             <Route path="/medicalHistory" element={<MedicalHistory />} />
                         </Route>
-                        <Route path="/doctors/:doctorId/profile" element={<DoctorProfile />} />
                         <Route path="/doctor/:id" element={<DoctorDetails />} />
                         <Route path="/doctors" element={<DoctorList />} />
 
@@ -145,7 +144,8 @@ const App = () => {
                         />
 
                         {/* Common routes */}
-                        <Route path="/doctors" element={<DoctorList />} />
+                        
+                        <Route path="/appointments" element={<PatientsAppointments/>} />                        <Route path="/doctors" element={<DoctorList />} />
                         <Route path="/doctor/:id" element={<DoctorDetails />} />
                         <Route path="/appointment-details" element={<AppointmentDetails />} />
                         <Route path="/appointment-confirmation" element={<Confirmation />} />

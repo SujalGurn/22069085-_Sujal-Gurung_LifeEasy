@@ -70,20 +70,6 @@ const SIDEBAR_ITEMS = [
     activeIcon: "#f9cc48"
   },
   { 
-    name: "Medical History", 
-    path: "/medicalHistory", 
-    icon: FiFolder,
-    activeBg: "#f9cc4820",
-    activeIcon: "#f9cc48"
-  },
-  { 
-    name: "Salary",
-    path: "/salaryForm",
-    icon: FiFolder,
-    activeBg: "#f9cc4820",
-    activeIcon: "#f9cc48"
-  },
-  { 
     name: "Salary Approval",
     path: "/pendingApproval",
     icon: FiFolder,
