@@ -1,0 +1,223 @@
+
+
+.appointments-container {
+    max-width: 100%;
+    padding: 4rem 2rem;
+    margin: 0 auto;
+    background: linear-gradient(to top, #ffffff, #f8f5ee);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+}
+
+.appointments-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 3rem;
+    padding-bottom: 1rem;
+    position: relative;
+    animation: fadeIn 0.8s ease-out;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.appointments-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(to right, #7c3aed, #4c1d95);
+    transition: width 0.4s ease;
+    border-radius: 2px;
+}
+
+.appointments-container:hover .appointments-title::after {
+    width: 160px;
+}
+
+.appointments-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    max-width: 1400px;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .appointments-grid {
+        grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+    }
+}
+
+.appointment-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(15px);
+    padding: 2.5rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    transition: transform 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
+    animation: fadeInUp 0.8s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.appointment-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: -1;
+}
+
+.appointment-card:hover::before {
+    opacity: 1;
+}
+
+.appointment-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.appointment-details,
+.appointment-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.appointment-doctor {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2d3748;
+    letter-spacing: 0.02em;
+}
+
+.appointment-info {
+    font-size: 1.125rem;
+    color: #5a6175;
+    line-height: 1.6;
+    transition: color 0.3s ease;
+}
+
+.appointment-info:hover {
+    color: #4c1d95;
+}
+
+.appointment-status {
+    font-size: 1.125rem;
+    color: #5a6175;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.appointment-status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.appointment-status-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.appointment-status-badge.confirmed {
+    background: #d4f4e2;
+    color: #065f46;
+}
+
+.appointment-status-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.appointment-status-badge.completed {
+    background: #e0f2fe;
+    color: #1e40af;
+}
+
+.appointment-status-badge.cancelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Loading and Error States */
+.appointments-loading,
+.appointments-error,
+.appointments-empty {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(15px);
+    padding: 4rem;
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    text-align: center;
+    margin: 4rem auto;
+    max-width: 600px;
+    animation: fadeIn 0.8s ease-out;
+}
+
+.appointments-spinner {
+    animation: spin 1.2s linear infinite;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #7c3aed;
+    border-radius: 50%;
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto;
+}
+
+.appointments-loading-text,
+.appointments-error-text,
+.appointments-empty-text {
+    font-family: 'Inter', sans-serif;
+    color: #5a6175;
+    font-size: 1.5rem;
+    margin-top: 2rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
