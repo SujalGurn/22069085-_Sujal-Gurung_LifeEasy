@@ -1,0 +1,120 @@
+/* General Navbar */
+.navbar {
+    background-color: #ffffff; /* Light background */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 8rem;
+    padding: 1.75rem 2rem;
+    box-shadow: 2 3px 5px rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  
+  /* Logo */
+  .navbar-logo {
+    display: flex;
+    align-items: center;
+    font-size: 3.2rem;
+    color: black;
+    font-weight: bold;
+  }
+  
+  .logo-icon {
+    margin-right: 0.5rem;
+    color: #53b774;
+  }
+  
+  /* Navigation Links */
+  .navbar-links {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    list-style: none;
+  }
+  
+  .navbar-links a {
+    color: black;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.6rem;
+    position: relative;
+    transition: color 0.3s;
+  }
+
+  .navbar-links li:hover{
+    color: #f9cc48;
+
+  }
+  
+
+  
+  /* Active link underline */
+  .navbar-links a.active::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background-color: #f9cc48;
+    left: 0;
+    bottom: -4px;
+  }
+  
+  /* Profile Photo and Username */
+  .navbar-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .profile-photo-circle {
+    width: 6vh;
+    height: 6vh;
+    border-radius: 9999px;
+    object-fit: cover;
+    border: 2px solid #f9cc48;
+  }
+  
+  .username {
+    text-align: center;
+    font-size: 1.95rem;
+    color: #14467c;
+    padding-left: 1rem;
+    font-weight: 600;
+  }
+  
+  /* Logout Button */
+  .nav-item button {
+    background-color: #f9cc48;
+    border: none;
+    padding: 0.9rem 2rem;
+    border-radius: 0.5rem;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .nav-item button:hover {
+    background-color: #f9cc48;
+    color: black;
+
+  }
+  
+  /* Mobile Responsive (Optional for later) */
+  @media (max-width: 768px) {
+    .navbar {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  
+    .navbar-links {
+      flex-direction: column;
+      width: 100%;
+      margin-top: 1rem;
+    }
+  }
+
+  
+  

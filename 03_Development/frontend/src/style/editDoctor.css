@@ -1,0 +1,129 @@
+/* General Container */
+.edit-profile-container {
+    max-width: 1600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.edit-profile-container h1 {
+    color: #1a237e;
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 1rem;
+}
+
+.edit-profile-container h2 {
+    color: #1a237e;
+    font-size: 1.5rem;
+    margin: 2rem 0 1rem;
+}
+
+.edit-profile-container label {
+    display: block;
+    color: #4a5568;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.edit-profile-container textarea {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 1rem;
+    min-height: 120px;
+    resize: vertical;
+    transition: border-color 0.3s ease;
+}
+
+.edit-profile-container textarea:focus {
+    outline: none;
+    border-color: #1a237e;
+    box-shadow: 0 0 0 2px rgba(26, 35, 126, 0.1);
+}
+
+/* Existing Info Section */
+.existing-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Dynamic List (Qualifications and Experience) */
+.dynamic-list {
+    margin: 2rem 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.dynamic-list .list-item {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: white;
+    transition: background 0.2s ease;
+}
+
+.dynamic-list .list-item:last-child {
+    border-bottom: none;
+}
+
+@media (max-width: 768px) {
+    .dynamic-list .list-item {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+}
+
+.dynamic-list .add-form {
+    background: #f8fafc;
+    padding: 1.5rem;
+    border-radius: 0 0 8px 8px;
+}
+
+.dynamic-list input[disabled] {
+    background: #f8fafc;
+    border-color: #e5e7eb;
+    color: #64748b;
+}
+
+/* Action Bar */
+.action-bar {
+    display: flex;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e5e7eb;
+}
+
+.action-bar button {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+@media (max-width: 480px) {
+    .action-bar {
+        flex-direction: column;
+    }
+}
+
+/* Loading and Error Messages */
+.loading {
+    padding: 1rem;
+    text-align: center;
+    font-size: 1rem;
+    color: #4a5568;
+}
+
+.error-message {
+    color: red;
+    padding: 1rem;
+    margin-top: 1rem;
+}

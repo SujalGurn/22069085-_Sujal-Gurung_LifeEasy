@@ -1,0 +1,23 @@
+/* Custom viewfinder animation */
+@keyframes scan-animation {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  
+  .scan-overlay::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(59, 130, 246, 0.75);
+    animation: scan-animation 2s infinite;
+  }
+
+  #qr-reader {
+    width: 100%;
+    max-width: 400px;
+    margin: auto;
+  }
+  
