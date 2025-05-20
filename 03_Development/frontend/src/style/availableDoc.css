@@ -1,0 +1,49 @@
+/* Availability Form */
+.availability-form {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* Availability List */
+.slots-container {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.slot-card {
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toggle-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.toggle-btn.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.toggle-btn.inactive {
+    background-color: #f44336;
+    color: white;
+}
