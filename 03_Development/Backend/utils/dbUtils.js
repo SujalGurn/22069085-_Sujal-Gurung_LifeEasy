@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS users(
     password VARCHAR(255) NOT NULL,
     role ENUM('user', 'admin', 'doctor') NOT NULL DEFAULT 'user',
     otp VARCHAR(6),
+    resetPasswordToken VARCHAR(255) DEFAULT NULL,
+    resetPasswordExpires DATETIME DEFAULT NULL,
     otpExpires DATETIME, 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`;
@@ -22,6 +24,7 @@ CREATE TABLE IF NOT EXISTS doctors(
     license_number VARCHAR(255) NOT NULL UNIQUE,
     specialization VARCHAR(255) NOT NULL,
     certification_path VARCHAR(255) NOT NULL,
+    consultation_fee DECIMAL(10,2) NOT NULL DEFAULT 250.00 COMMENT 'Consultation fee in NPR',
     id_proof_path VARCHAR(255) NOT NULL,
     Total_income DECIMAL(12,2) DEFAULT 0.00,
     verification_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
@@ -62,9 +65,12 @@ CREATE TABLE IF NOT EXISTS appointments(
   token_number VARCHAR(25) DEFAULT NULL COMMENT 'Display token format: TKN-{doctor_id}-{date}-{seq}',
   expires_at DATETIME NOT NULL COMMENT 'UTC timestamp',
   is_used BOOLEAN DEFAULT false,
+  payment_verified BOOLEAN DEFAULT FALSE,
   qr_token VARCHAR(512) NOT NULL UNIQUE COMMENT 'JWT token for verification',
   status ENUM('pending', 'confirmed', 'cancelled', 'completed') DEFAULT 'pending',
+  payment_status ENUM('unpaid', 'paid', 'failed') DEFAULT 'unpaid',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
   INDEX idx_qr_token (qr_token),
@@ -104,6 +110,7 @@ CREATE TABLE IF NOT EXISTS staff (
 const patientTableQuery = `
 CREATE TABLE IF NOT EXISTS patient (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    profile_picture VARCHAR(255) DEFAULT NULL,
     user_id INT UNIQUE NOT NULL,
     patient_code VARCHAR(255) UNIQUE NOT NULL,
     gender ENUM('male', 'female', 'other'),
@@ -209,6 +216,52 @@ CREATE TABLE IF NOT EXISTS experience (
     FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
     INDEX idx_doctor_experience (doctor_id)
 )`;
+const paymentsTableQuery = `
+CREATE TABLE IF NOT EXISTS payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_id INT NOT NULL,
+    patient_id INT NOT NULL,
+    transaction_uuid VARCHAR(255) NOT NULL UNIQUE,
+    amount DECIMAL(10,2) NOT NULL,
+    status ENUM('pending', 'completed', 'failed') DEFAULT 'pending',
+    ref_id VARCHAR(255),
+    verified_at DATETIME,
+    verification_data JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_transaction_uuid (transaction_uuid)
+)`;
+
+const bedTableQuery = `
+CREATE TABLE IF NOT EXISTS beds (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    bed_number VARCHAR(20) NOT NULL UNIQUE,
+    room_number VARCHAR(20) NOT NULL,
+    status ENUM('available', 'occupied', 'maintenance', 'reserved', 'cleaning') DEFAULT 'available',
+    room_type ENUM('general', 'icu', 'private', 'ward') NOT NULL,
+    patient_id INT DEFAULT NULL,
+    admission_date DATETIME DEFAULT NULL,
+    discharge_date DATETIME DEFAULT NULL,
+    assigned_by INT DEFAULT NULL COMMENT 'Staff/user who assigned the bed',
+    last_updated_by INT DEFAULT NULL COMMENT 'Staff/user who last updated the bed',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patient(id) ON DELETE SET NULL,
+    FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (last_updated_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_room (room_number),
+    INDEX idx_room_type (room_type),
+    INDEX idx_patient (patient_id),
+    INDEX idx_admission_date (admission_date),
+    INDEX idx_discharge_date (discharge_date)
+);`;
+
+
+
 
 
 const createTable = async (tableName, query) => {
@@ -241,6 +294,7 @@ const createAllTable = async () => {
         await createTable("experience", experienceTableQuery);
         await createTable("Doctor_availability", doctor_availabilityTableQuery);
         await createTable("Appointments", appointmentsTableQuery);
+        await createTable("Payments", paymentsTableQuery);
         await createTable("Token_logs", token_logsTableQuery);
         await createTable("Staff", staffTableQuery);
         await createTable("Patient", patientTableQuery);
@@ -248,6 +302,7 @@ const createAllTable = async () => {
         await createTable("Auto_salary", auto_salaryTableQuery);
         await createTable("salaryPayment", salaryPaymentTableQuery);
         await createTable("Deduction", deductionTableQuery);
+        await createTable("beds", bedTableQuery);
 
         console.log("All tables created successfully!!");
     } catch (error) {

@@ -89,6 +89,13 @@ const SIDEBAR_ITEMS = [
     icon: FiFolder,
     activeBg: "#f9cc4820",
     activeIcon: "#f9cc48"
+  },
+  {
+    name: "Bed Management",
+    path: "/bed-management",
+    icon: FiFolder,
+    activeBg: "#f9cc4820",
+    activeIcon: "#f9cc48"
   }
   
 ];

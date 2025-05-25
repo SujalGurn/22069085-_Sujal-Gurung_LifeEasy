@@ -13,6 +13,8 @@ const EditPatientProfile = () => {
         emergency_contact_name: '',
         emergency_contact_number: '',
     });
+    const [profilePicture, setProfilePicture] = useState(null);
+    const [preview, setPreview] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -22,21 +24,15 @@ const EditPatientProfile = () => {
         const fetchProfile = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get('/api/profile/patient', {
+                const response = await axios.get('http://localhost:3002/api/profile/patient', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (response.data.success && response.data.data) {
-                    const { fullname, email, ...patientData } = response.data.data;
+                    const { fullname, email, profile_picture, ...patientData } = response.data.data;
                     setFormData(patientData);
-                } else {
-                    setFormData({
-                        gender: '',
-                        blood_group: '',
-                        address: '',
-                        contact_number: '',
-                        emergency_contact_name: '',
-                        emergency_contact_number: '',
-                    });
+                    if (profile_picture) {
+                        setPreview(`http://localhost:3002/${profile_picture}`);
+                    }
                 }
             } catch (error) {
                 setError(error.response?.data?.message || 'Error fetching patient profile');
@@ -52,6 +48,14 @@ const EditPatientProfile = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setProfilePicture(file);
+            setPreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -60,117 +64,153 @@ const EditPatientProfile = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.put('/api/profile/patient', formData, {
-                headers: { Authorization: `Bearer ${token}` },
+            const data = new FormData();
+            Object.keys(formData).forEach((key) => {
+                data.append(key, formData[key] || '');
+            });
+            if (profilePicture) {
+                data.append('profile_picture', profilePicture);
+            }
+
+            const response = await axios({
+                method: formData.id ? 'put' : 'post',
+                url: 'http://localhost:3002/api/profile/patient',
+                data,
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             if (response.data.success) {
-                setSuccess('Patient profile updated successfully!');
+                setSuccess('Patient profile saved successfully!');
                 setTimeout(() => navigate('/patient-profile'), 1500);
             } else {
-                setError(response.data.message || 'Failed to update patient profile');
+                setError(response.data.message || 'Failed to save patient profile');
             }
         } catch (error) {
-            setError(error.response?.data?.message || 'Error updating patient profile');
+            console.error('Profile save error:', error.response?.data);
+            setError(error.response?.data?.message || 'Error saving patient profile. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div >
-        <div className="edit-patient-profile-container">
-            <div className="edit-patient-profile-card">
-                <h2 className="edit-patient-profile-title">Edit Patient Profile</h2>
+        <div>
+            <div className="edit-patient-profile-container">
+                <div className="edit-patient-profile-card">
+                    <h2 className="edit-patient-profile-title">
+                        {formData.id ? 'Edit Patient Profile' : 'Create Patient Profile'}
+                    </h2>
 
-                {error && <p className="edit-patient-profile-error">{error}</p>}
-                {success && <p className="edit-patient-profile-success">{success}</p>}
+                    {error && <p className="edit-patient-profile-error">{error}</p>}
+                    {success && <p className="edit-patient-profile-success">{success}</p>}
 
-                <form onSubmit={handleSubmit}>
-                    <div className="edit-patient-profile-form">
-                        <div className="form-item">
-                            <label htmlFor="gender" className="form-label">Gender</label>
-                            <select
-                                id="gender"
-                                name="gender"
-                                value={formData.gender}
-                                onChange={handleChange}
-                                className="form-input"
+                    <form onSubmit={handleSubmit}>
+                        <div className="edit-patient-profile-form">
+                            <div className="form-item">
+                                <label htmlFor="profile_picture" className="form-label">Profile Picture</label>
+                                {preview && (
+                                    <img
+                                        src={preview}
+                                        alt="Profile Preview"
+                                        className="profile-picture-preview"
+                                        style={{ width: '100px', height: '100px', borderRadius: '50%', marginBottom: '10px' }}
+                                    />
+                                )}
+                                <input
+                                    type="file"
+                                    id="profile_picture"
+                                    name="profile_picture"
+                                    accept="image/jpeg,image/jpg,image/png"
+                                    onChange={handleFileChange}
+                                    className="form-input"
+                                />
+                            </div>
+                            <div className="form-item">
+                                <label htmlFor="gender" className="form-label">Gender</label>
+                                <select
+                                    id="gender"
+                                    name="gender"
+                                    value={formData.gender}
+                                    onChange={handleChange}
+                                    className="form-input"
+                                >
+                                    <option value="">Select Gender</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div className="form-item">
+                                <label htmlFor="blood_group" className="form-label">Blood Group</label>
+                                <input
+                                    type="text"
+                                    id="blood_group"
+                                    name="blood_group"
+                                    value={formData.blood_group}
+                                    onChange={handleChange}
+                                    className="form-input"
+                                />
+                            </div>
+                            <div className="form-item">
+                                <label htmlFor="address" className="form-label">Address</label>
+                                <input
+                                    type="text"
+                                    id="address"
+                                    name="address"
+                                    value={formData.address}
+                                    onChange={handleChange}
+                                    className="form-input"
+                                />
+                            </div>
+                            <div className="form-item">
+                                <label htmlFor="contact_number" className="form-label">Contact Number</label>
+                                <input
+                                    type="text"
+                                    id="contact_number"
+                                    name="contact_number"
+                                    value={formData.contact_number}
+                                    onChange={handleChange}
+                                    className="form-input"
+                                />
+                            </div>
+                            <div className="form-item">
+                                <label htmlFor="emergency_contact_name" className="form-label">Emergency Contact Name</label>
+                                <input
+                                    type="text"
+                                    id="emergency_contact_name"
+                                    name="emergency_contact_name"
+                                    value={formData.emergency_contact_name}
+                                    onChange={handleChange}
+                                    className="form-input"
+                                />
+                            </div>
+                            <div className="form-item">
+                                <label htmlFor="emergency_contact_number" className="form-label">Emergency Contact Number</label>
+                                <input
+                                    type="text"
+                                    id="emergency_contact_number"
+                                    name="emergency_contact_number"
+                                    value={formData.emergency_contact_number}
+                                    onChange={handleChange}
+                                    className="form-input"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="edit-patient-profile-actions">
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="edit-patient-profile-submit-button"
                             >
-                                <option value="">Select Gender</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                                <option value="other">Other</option>
-                            </select>
+                                {loading ? 'Saving...' : 'Save Profile'}
+                            </button>
                         </div>
-                        <div className="form-item">
-                            <label htmlFor="blood_group" className="form-label">Blood Group</label>
-                            <input
-                                type="text"
-                                id="blood_group"
-                                name="blood_group"
-                                value={formData.blood_group}
-                                onChange={handleChange}
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="form-item">
-                            <label htmlFor="address" className="form-label">Address</label>
-                            <input
-                                type="text"
-                                id="address"
-                                name="address"
-                                value={formData.address}
-                                onChange={handleChange}
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="form-item">
-                            <label htmlFor="contact_number" className="form-label">Contact Number</label>
-                            <input
-                                type="text"
-                                id="contact_number"
-                                name="contact_number"
-                                value={formData.contact_number}
-                                onChange={handleChange}
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="form-item">
-                            <label htmlFor="emergency_contact_name" className="form-label">Emergency Contact Name</label>
-                            <input
-                                type="text"
-                                id="emergency_contact_name"
-                                name="emergency_contact_name"
-                                value={formData.emergency_contact_name}
-                                onChange={handleChange}
-                                className="form-input"
-                            />
-                        </div>
-                        <div className="form-item">
-                            <label htmlFor="emergency_contact_number" className="form-label">Emergency Contact Number</label>
-                            <input
-                                type="text"
-                                id="emergency_contact_number"
-                                name="emergency_contact_number"
-                                value={formData.emergency_contact_number}
-                                onChange={handleChange}
-                                className="form-input"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="edit-patient-profile-actions">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="edit-patient-profile-submit-button"
-                        >
-                            {loading ? 'Saving...' : 'Save Profile'}
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
-        </div>
             <Footer />
         </div>
     );

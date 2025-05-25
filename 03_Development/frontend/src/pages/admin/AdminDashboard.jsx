@@ -33,7 +33,7 @@ const AdminDashboard = () => {
                 const appointmentsResponse = await axios.get('http://localhost:3002/api/stats/appointments-trend', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-
+ console.log('Appointment Trend Data:', appointmentsResponse.data.trend);
                 if (statsResponse.data.success && appointmentsResponse.data.success) {
                     setStats(statsResponse.data.stats);
                     setAppointmentData(appointmentsResponse.data.trend);
@@ -145,34 +145,32 @@ const AdminDashboard = () => {
                 <BarChart data={appointmentData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis 
-                        dataKey="month"
-                        tickFormatter={(value) => {
-                            const [year, month] = value.split('-');
-                            return new Date(year, month-1).toLocaleString('default', { month: 'short' });
-                        }}
-                        tick={{ fill: '#6B7280', fontSize: 12 }}
-                        axisLine={false}
-                    />
-                    <YAxis 
-                        tick={{ fill: '#6B7280', fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                    />
-                    <Tooltip 
-                        cursor={{ fill: '#E5E7EB' }}
-                        content={({ active, payload, label }) => (
-                            active && (
-                                <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                                    <p className="font-medium text-gray-700">
-                                        {new Date(label).toLocaleString('default', { month: 'long', year: 'numeric' })}
-                                    </p>
-                                    <p className="text-sm text-[#3B82F6]">
-                                        Appointments: {payload[0].value}
-                                    </p>
-                                </div>
-                            )
-                        )}
-                    />
+    dataKey="month"
+    tickFormatter={(value) => {
+        const [year, month] = value.split('-');
+        return new Date(year, month-1).toLocaleString('default', { month: 'short' });
+    }}
+    tick={{ fill: '#6B7280', fontSize: 12 }}
+    axisLine={false}
+/>
+<Tooltip 
+    cursor={{ fill: '#E5E7EB' }}
+    content={({ active, payload, label }) => (
+        active && (
+            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                <p className="font-medium text-gray-700">
+                    {new Date(label + '-01').toLocaleString('default', { 
+                        month: 'long', 
+                        year: 'numeric' 
+                    })}
+                </p>
+                <p className="text-sm text-[#3B82F6]">
+                    Appointments: {payload[0].value}
+                </p>
+            </div>
+        )
+    )}
+/>
                     <Bar 
                         dataKey="appointments" 
                         fill="#53b774"

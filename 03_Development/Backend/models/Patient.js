@@ -1,11 +1,19 @@
 import { pool } from '../config/db.js';
 
-
 export const createPatient = async (patientData) => {
     try {
         const query = `
-            INSERT INTO patient (user_id, patient_code, gender, blood_group, address, contact_number, emergency_contact_name, emergency_contact_number)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO patient (
+                user_id, 
+                patient_code, 
+                gender, 
+                blood_group, 
+                address, 
+                contact_number, 
+                emergency_contact_name, 
+                emergency_contact_number, 
+                profile_picture
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const values = [
             patientData.user_id,
@@ -16,6 +24,7 @@ export const createPatient = async (patientData) => {
             patientData.contact_number,
             patientData.emergency_contact_name,
             patientData.emergency_contact_number,
+            patientData.profile_picture || null,
         ];
         const [result] = await pool.query(query, values);
         return { success: true, patientId: result.insertId, message: 'Patient created successfully' };
@@ -24,7 +33,6 @@ export const createPatient = async (patientData) => {
         return { success: false, message: 'Failed to create patient', error: error.message };
     }
 };
-
 
 export const getPatientByUserId = async (userId) => {
     try {
@@ -42,8 +50,15 @@ export const updatePatient = async (patientId, patientData) => {
     try {
         const query = `
             UPDATE patient
-            SET gender = ?, blood_group = ?, address = ?, contact_number = ?,
-                emergency_contact_name = ?, emergency_contact_number = ?, updated_at = CURRENT_TIMESTAMP
+            SET 
+                gender = ?, 
+                blood_group = ?, 
+                address = ?, 
+                contact_number = ?, 
+                emergency_contact_name = ?, 
+                emergency_contact_number = ?, 
+                profile_picture = ?, 
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `;
         const values = [
@@ -53,6 +68,7 @@ export const updatePatient = async (patientId, patientData) => {
             patientData.contact_number,
             patientData.emergency_contact_name,
             patientData.emergency_contact_number,
+            patientData.profile_picture || null,
             patientId,
         ];
         const [result] = await pool.query(query, values);

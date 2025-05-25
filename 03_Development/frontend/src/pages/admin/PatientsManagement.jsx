@@ -53,7 +53,7 @@ function PatientManagement() {
     };
 
     return (
-        <div className="flex-1 overflow-auto ">
+        <div className="flex-1 overflow-auto">
             <main className="max-w-6xl mx-auto py-8 px-4">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -76,6 +76,7 @@ function PatientManagement() {
                         <table className="min-w-full text-sm text-left">
                             <thead className="bg-[#f5f5f5] text-[#14467c]">
                                 <tr>
+                                    <th className="px-4 py-3 font-semibold">Patient ID</th>
                                     <th className="px-4 py-3 font-semibold">Name</th>
                                     <th className="px-4 py-3 font-semibold">Email</th>
                                     <th className="px-4 py-3 font-semibold">Contact</th>
@@ -91,6 +92,7 @@ function PatientManagement() {
                                         animate={{ opacity: 1 }}
                                         className="hover:bg-gray-100 transition-colors"
                                     >
+                                        <td className="px-4 py-3">{patient.id}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-10 rounded-full bg-[#53b774] text-white flex items-center justify-center font-bold">

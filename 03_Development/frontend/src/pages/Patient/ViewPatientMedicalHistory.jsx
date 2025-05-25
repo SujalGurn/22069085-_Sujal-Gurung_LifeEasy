@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
-import { Loader } from 'lucide-react'; // Optional loading spinner
-import '../../style/medicalHistory.css'; 
-import Footer from "../../components/Footer";
+import { Loader } from 'lucide-react';
+import '../../style/medicalHistory.css';
+import Footer from '../../components/Footer';
 
 const ViewPatientMedicalHistory = () => {
     const [medicalHistory, setMedicalHistory] = useState([]);
@@ -15,9 +15,8 @@ const ViewPatientMedicalHistory = () => {
         const fetchMedicalHistory = async () => {
             try {
                 const token = localStorage.getItem('token');
-                let apiUrl = '/api/patient/medical-history'; // Default for logged-in patient
+                let apiUrl = '/api/patient/medical-history';
 
-                // If a patientId is present in the URL (doctor viewing), fetch for that patient
                 if (patientId) {
                     apiUrl = `/api/patients/${patientId}/history`;
                 }
@@ -39,6 +38,35 @@ const ViewPatientMedicalHistory = () => {
 
         fetchMedicalHistory();
     }, [patientId]);
+const handleViewReport = async (filename) => {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setError('Please log in to view the report.');
+            return;
+        }
+
+        const baseFilename = filename.split('/').pop();
+        console.log('Fetching report:', baseFilename);
+
+        const response = await axios.get(`/api/reports/${baseFilename}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            responseType: 'blob',
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const win = window.open(url, '_blank');
+
+        setTimeout(() => {
+            if (win) win.close();
+            window.URL.revokeObjectURL(url);
+        }, 10000);
+    } catch (error) {
+        console.error('Error viewing report:', error);
+        const errorMessage = error.response?.data?.message || 'Failed to view report. Please try again.';
+        setError(errorMessage);
+    }
+};
 
     if (loading) {
         return (
@@ -65,25 +93,6 @@ const ViewPatientMedicalHistory = () => {
         );
     }
 
-    const handleViewReport = async (filename) => {
-        try {
-          const token = localStorage.getItem('token');
-          const response = await axios.get(
-            `/api/reports/${encodeURIComponent(filename)}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          
-          // Handle PDF display
-          const blob = new Blob([response.data], { type: 'application/pdf' });
-          const fileURL = URL.createObjectURL(blob);
-          window.open(fileURL, '_blank');
-          
-        } catch (error) {
-          console.error('Error viewing report:', error);
-          setError('Failed to view report');
-        }
-      };
-
     return (
         <div className="min-h-screen bg-[#f8f5ee] py-12 px-4">
             <div className="max-w-6xl mx-auto bg-white shadow-lg rounded-3xl p-8">
@@ -103,26 +112,13 @@ const ViewPatientMedicalHistory = () => {
                             {record.notes && <p><strong>Notes:</strong> {record.notes}</p>}
                             {record.report_name && <p><strong>Report:</strong> {record.report_name}</p>}
                             {record.report_path && (
-                                <p>
-                                    <strong>Report File:</strong>
-                                    <a
-                                        href={record.report_path}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-[#14467c] hover:text-[#f9cc48] underline"
-                                    >
-                                        View Report
-                                    </a>
-                                </p>
+                                <button
+                                    onClick={() => handleViewReport(record.report_path)}
+                                    className="view-report-btn bg-[#14467c] text-white px-4 py-2 rounded hover:bg-[#f9cc48]"
+                                >
+                                    View Report
+                                </button>
                             )}
-                            {record.report_path && (
-      <button 
-        onClick={() => handleViewReport(record.report_path)}
-        className="ml-4 px-4 py-2 bg-[#53b774] text-white rounded-lg hover:bg-[#3a8356] transition-colors"
-      >
-        View Report
-      </button>
-    )}
                         </div>
                     ))}
                 </div>

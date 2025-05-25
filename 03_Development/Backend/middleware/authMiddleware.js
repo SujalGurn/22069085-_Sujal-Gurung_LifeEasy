@@ -57,23 +57,34 @@ export const isDoctor = (req, res, next) => {
 //   next();
 // };
 
-export const isSameDoctor = (req, res, next) => {
-  const requestedDoctorId = parseInt(req.params.id);
-  
-  // Allow GET requests (viewing) by anyone
-  if (req.method === 'GET') return next();
+export const isSameDoctor = async (req, res, next) => {
+    const requestedDoctorId = parseInt(req.params.id, 10); // The ID from the URL param
+    
+    // Allow GET requests (viewing profiles) to proceed without strict ID matching
+    if (req.method === 'GET') {
+        return next();
+    }
 
-  // Restrict write operations (PUT/POST/DELETE) to the doctor's own profile
-  if (req.user.id !== requestedDoctorId) {
-    return res.status(403).json({
-      success: false,
-      message: "Access denied: You can only modify your own profile",
-    });
-  }
-  
-  next();
+    // Ensure user is authenticated and is a doctor
+    if (!req.user || req.user.role !== 'doctor') {
+        return res.status(403).json({
+            success: false,
+            message: "Access denied: Only doctors can modify their profiles.",
+        });
+    }
+
+    // **Crucial Check:** Match the doctorProfileId from the authenticated user (from token)
+    // with the doctorProfileId in the URL.
+    if (req.user.doctorProfileId !== requestedDoctorId) {
+        console.warn(`Unauthorized attempt: User ID ${req.user.id} (Doctor Profile ID ${req.user.doctorProfileId}) tried to modify profile ${requestedDoctorId}`);
+        return res.status(403).json({
+            success: false,
+            message: "Access denied: You can only modify your own doctor profile.",
+        });
+    }
+    
+    next();
 };
-
 export const checkRole = (roles) => (req, res, next) => {
   if (!roles.includes(req.user.role)) {
     return res.status(403).json({ 

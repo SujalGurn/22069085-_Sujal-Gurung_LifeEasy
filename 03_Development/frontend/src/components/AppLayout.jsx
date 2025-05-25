@@ -21,6 +21,7 @@ const AppLayout = () => {
       case '/salaryHistory': return 'Salary History';
       case '/pendingApproval': return 'Pending Approvals';
       case '/initialSalaryConfig': return 'Initial Salary Configuration';
+      case '/bed-management': return 'Bed Management';
       default: return 'adminDashboard';
     }
   };

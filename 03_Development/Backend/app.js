@@ -8,19 +8,23 @@ import path from 'path';
 import doctorRoutes from './routes/doctorRoutes.js';
 import statsRouter from './routes/statsRoute.js';
 import patientRoutes from './routes/patientRoutes.js'; 
+import appointmentRoutes from './routes/doctorRoutes.js';
+import alertRoutes from './routes/alertRoutes.js';
 import medicalHistoryRoutes from './routes/medicalHistoryRoutes.js'; 
-import salaryRoutes from './routes/salaryRoutes.js'; // Import your salary routes
-import { verifyToken, adminOnly } from './middleware/authMiddleware.js';
-import fs from 'fs';
-
+import salaryRoutes from './routes/salaryRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
+import bedRoutes from './routes/bedRoutes.js'
 const app = express();
 const __dirname = path.resolve();
 
+
+app.use('/api/reports', reportRoutes);
+app.use('/api', medicalHistoryRoutes);
 app.use(cors({
-    origin: 'http://localhost:5173', 
+    origin: ['http://localhost:5173', 'https://rc-epay.esewa.com.np'], 
     credentials: true,
     exposedHeaders: ['Authorization', 'Content-Type'],
-    allowedHeaders: ['Authorization', 'Content-Type']
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With']
   }));
 
 app.use(express.json());
@@ -31,6 +35,7 @@ app.use('/api/salaries', salaryRoutes);
 app.use('/api', doctorRoutes);
 app.use('/api', patientRoutes); 
 app.use('/api', medicalHistoryRoutes)
+app.use('/api/beds', bedRoutes);
 
 app.use('/uploads', (req, res, next) => {
     res.setHeader('Content-Security-Policy', "default-src 'self'; frame-ancestors 'self'");
@@ -49,7 +54,7 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
         }
     }
 }));
-
+// app.use('/api/reports', reportRoutes);
 app.get('/api/users', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
   
@@ -58,6 +63,10 @@ app.get('/api/verifications/pending', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
    
 });
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api/alerts', alertRoutes);
+
+// app.use('/uploads/medical-reports', express.static('uploads/medical-reports'));
 app.use('/api/stats', statsRouter);
 app.use('/qrcodes', express.static(path.join(process.cwd(), 'public', 'qrcodes')));
 app.listen(3002, async() => {    

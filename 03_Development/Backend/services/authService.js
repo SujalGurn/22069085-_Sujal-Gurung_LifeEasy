@@ -1,42 +1,31 @@
-
 import bcrypt from 'bcryptjs';
-import {pool} from '../config/db.js';
+import { pool } from '../config/db.js';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// const JWT_SECRET="qwerasdfqwerasdfdfsdfqfuiofghwefdfsbq"
-
-
-
-export const registerUser=async(user, role = 'user')=>{
+export const registerUser = async (user, role = 'user') => {
     console.log(user);
 
-    try{
-
-        const[existingUser]=await pool.query(`SELECT * FROM users WHERE email=?`,[user.email]);
-        if(existingUser.length>0){
-            return {success:false,message:"User already exists!"};
+    try {
+        const [existingUser] = await pool.query(`SELECT * FROM users WHERE email=?`, [user.email]);
+        if (existingUser.length > 0) {
+            return { success: false, message: "User already exists!" };
         }
 
-        const hashedPassword = await bcrypt.hash(user.password,10);
-        const query=`INSERT INTO users 
+        const hashedPassword = await bcrypt.hash(user.password, 10);
+        const query = `INSERT INTO users 
       (fullname, username, dateofbirth, contact, email, password, role)
       VALUES (?, ?, ?, ?, ?, ?, ?)`;
-        const values = [user.fullname,user.username,user.dateofbirth,user.contact,user.email,hashedPassword,role];
+        const values = [user.fullname, user.username, user.dateofbirth, user.contact, user.email, hashedPassword, role];
 
-
-       
         const [result] = await pool.query(query, values);
         console.log("registerUser result:", result);
-        // await pool.query(query,values);
-        return {success:true,message:"Registration successful!", userId: result.insertId};
-    }catch(error){
-        return {success:false,message:"Registration failed!. Please try again", error:error};
+        return { success: true, message: "Registration successful!", userId: result.insertId };
+    } catch (error) {
+        return { success: false, message: "Registration failed!. Please try again", error: error };
     }
-
 }
-
 
 export const registerDoctorInService = async (doctorData, connection = pool) => {
     console.log("registerDoctorInService doctorData:", doctorData);
@@ -62,89 +51,92 @@ export const registerDoctorInService = async (doctorData, connection = pool) => 
     }
 };
 
-export const loginUser=async(email,password)=>{
+export const loginUser = async (email, password) => {
+    try {
+        const [rows] = await pool.query(`SELECT * FROM users WHERE email=?`, [email]);
+        if (rows.length === 0) {
+            return { success: false, message: "User not found!" };
+        }
+        const user = rows[0];
 
-    try{
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            return { success: false, message: "Invalid password!" };
+        }
 
-        const [rows]=await pool.query(`SELECT * FROM users WHERE email=?`,[email]);
-    if(rows.length===0){
-        return {success:false,message:"User not found!"};
-    }
-    const user=rows[0];
+        // Doctor verification check
+        if (user.role === 'doctor') {
+            const [doctor] = await pool.query(
+                `SELECT verification_status 
+                 FROM doctors 
+                 WHERE user_id = ?`,
+                [user.id]
+            );
 
-    const passwordMatch=await bcrypt.compare(password,user.password);
-    if(!passwordMatch){
-        return {success:false,message:"Invalid password!"};
-    }
+            if (!doctor.length) {
+                return { 
+                    success: false, 
+                    message: "Doctor registration not found" 
+                };
+            }
 
- // Doctor verification check
- if (user.role === 'doctor') {
-    const [doctor] = await pool.query(
-        `SELECT verification_status 
-         FROM doctors 
-         WHERE user_id = ?`,
-        [user.id]
-    );
+            if (doctor[0].verification_status !== 'approved') {
+                return { 
+                    success: false, 
+                    message: "Account pending admin approval" 
+                };
+            }
+        }
 
-    if (!doctor.length) {
-        return { 
-            success: false, 
-            message: "Doctor registration not found" 
+        const numericId = parseInt(user.id);
+        if (isNaN(numericId)) {
+            return { success: false, message: "Invalid user ID format" };
+        }
+
+        const token = jwt.sign(
+            { id: numericId, role: user.role, email: user.email },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+        console.log("generated token", token);
+        console.log("JWT_SECRET from login route:", process.env.JWT_SECRET);
+
+        return {
+            success: true,
+            message: "Login successful!",
+            token: token,
+            role: user.role,
+            userId: numericId
         };
-    }
-
-    if (doctor[0].verification_status !== 'approved') {
-        return { 
-            success: false, 
-            message: "Account pending admin approval" 
-        };
+    } catch (error) {
+        return { success: false, message: "Login failed!. Please try again", error: error };
     }
 }
-
-
-    const token=jwt.sign({id:user.id, role: user.role , email: user.email},
-        process.env.JWT_SECRET,
-        {expiresIn:'1h'}
-    );
-    console.log("generated token",token);
-    console.log("JWT_SECRET from login route:", process.env.JWT_SECRET);
-
-    return{
-        success:true,
-        message:"Login successful!",
-        token:token,
-        role:user.role,
-        userId:user.id
-    }
-    } catch(error){
-
-        return {success:false,message:"Login failed!. Please try again", error:error};
-    }
-    
-
-}
-
 
 export const getUserFromToken = async (token) => {
     try {
         const trimedToken = token.trim();
         const decodedToken = jwt.verify(trimedToken, process.env.JWT_SECRET);
 
+        const numericId = parseInt(decodedToken.id);
+        if (isNaN(numericId)) {
+            return { success: false, message: "Invalid token: user ID must be numeric" };
+        }
+
         const [rows] = await pool.query(
             `SELECT id, username, contact, email, role FROM users WHERE id=?`,
-            [decodedToken.id]
+            [numericId]
         );
 
         if (rows.length === 0) {
             return { success: false, message: "User not found!" };
         } else {
-            return { success: true, user: rows[0] }; // Include user data here
+            return { success: true, user: { ...rows[0], id: numericId } };
         }
     } catch (error) {
         return { success: false, message: "Invalid token!" };
     }
 };
-
 
 export const getPendingVerifications = async (req, res) => {
     try {
@@ -169,7 +161,7 @@ export const getPendingVerifications = async (req, res) => {
             success: true, 
             doctors: doctors.map(doc => ({
                 ...doc,
-                certification_path: `${process.env.BASE_URL}/uploads/kyc/${path.basename(doc.certification_path)}`,
+                certification_path: `${process.env.BASE_URL}/Uploads/kyc/${path.basename(doc.certification_path)}`,
                 id_proof_path: `${process.env.BASE_URL}/Uploads/kyc/${path.basename(doc.id_proof_path)}`
             }))
         });

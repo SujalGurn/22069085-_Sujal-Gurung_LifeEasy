@@ -81,6 +81,11 @@
     margin-bottom: 2rem;
     font-size: 1.2rem;
   }
+  .doctor-avatar, .current-profile-pic {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+}
   
   /* Experience & Qualifications */
   .experience-list,

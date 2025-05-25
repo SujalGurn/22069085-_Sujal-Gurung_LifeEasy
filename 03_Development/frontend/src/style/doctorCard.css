@@ -29,6 +29,8 @@
 }
 
 .doctor-card {
+  background-color: #f9f7f7fe;
+
   border-radius: 16px;
   padding: 4rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);

@@ -6,8 +6,12 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'), // <-- this makes '@' point to 'src' folder
+      '@': path.resolve(__dirname, './src'),
+      buffer: 'buffer' // <-- this makes 'buffer' point to the 'buffer' module
     },
+  },
+  define: {
+    global: {}, // Ensure global context is available if needed
   },
   server: {
     proxy: {

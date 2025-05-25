@@ -1,43 +1,113 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiUsers, FiCalendar, FiDollarSign, FiActivity, FiPlusCircle, FiBell } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
-import AppointmentList from './AppointmentList'; // Adjust path if needed
+import AppointmentList from './AppointList'; // Fixed import to match filename
+import axios from 'axios';
 
 const DoctorDashboard = () => {
-  const dashboardData = {
-    totalPatients: 245,
-    upcomingAppointments: 12,
-    monthlyEarnings: 12500,
-    completedAppointments: 18,
-    appointments: [
-      { id: 1, patient: "Sarah Johnson", time: "09:00 AM", condition: "Follow-up" },
-      { id: 2, patient: "Mike Chen", time: "10:30 AM", condition: "New Patient" },
-    ],
-    earningsData: [
-      { month: 'Jan', earnings: 4000 },
-      { month: 'Feb', earnings: 6500 },
-      { month: 'Mar', earnings: 12500 },
-    ],
-    alerts: [
-      "Low stock of Painkillers",
-      "Annual conference next week",
-      "2 pending prescriptions"
-    ]
-  };
+  const [dashboardData, setDashboardData] = useState({
+    totalPatients: 0,
+    upcomingAppointments: 0,
+    monthlyEarnings: 0,
+    completedAppointments: 0,
+    appointments: [],
+    earningsData: [],
+    alerts: []
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        let errors = [];
+
+        // Fetch stats
+        try {
+          const statsResponse = await axios.get('/api/stats/doctor-stats', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          console.log('Stats Response:', statsResponse.data);
+          const { totalPatients, upcomingAppointments, monthlyEarnings, completedAppointments } = statsResponse.data.stats;
+          setDashboardData(prev => ({ ...prev, totalPatients, upcomingAppointments, monthlyEarnings, completedAppointments }));
+        } catch (err) {
+          errors.push(`Stats: ${err.response?.data?.message || err.message}`);
+        }
+
+        // Fetch earnings trend
+        try {
+          const earningsResponse = await axios.get('/api/stats/doctor-earnings-trend', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          console.log('Earnings Response:', earningsResponse.data);
+          setDashboardData(prev => ({
+            ...prev,
+            earningsData: earningsResponse.data.trend.map(item => ({
+              month: item.month.slice(0, 7),
+              earnings: item.earnings
+            }))
+          }));
+        } catch (err) {
+          errors.push(`Earnings: ${err.response?.data?.message || err.message}`);
+        }
+
+        // Fetch appointments
+        try {
+          const appointmentsResponse = await axios.get('/api/stats/doctor-appointments', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          console.log('Appointments Response:', appointmentsResponse.data);
+          setDashboardData(prev => ({ ...prev, appointments: appointmentsResponse.data.appointments }));
+        } catch (err) {
+          errors.push(`Appointments: ${err.response?.data?.message || err.message}`);
+        }
+
+        // Fetch alerts
+        try {
+          const alertsResponse = await axios.get('/api/stats/doctor-alerts', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          console.log('Alerts Response:', alertsResponse.data);
+          setDashboardData(prev => ({ ...prev, alerts: alertsResponse.data.alerts.map(alert => alert.message) }));
+        } catch (err) {
+          errors.push(`Alerts: ${err.response?.data?.message || err.message}`);
+        }
+
+        if (errors.length > 0) {
+          setError(`Failed to load some data: ${errors.join('; ')}`);
+        }
+      } catch (err) {
+        setError(`Unexpected error: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-red-600">{error}</div>;
+  }
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-[#14467c]">Welcome Dr. Smith</h1>
+        <h1 className="text-2xl font-bold text-[#14467c]">Welcome Dr. Gurung</h1> {/* Updated to match doctors table */}
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <SummaryCard icon={<FiUsers />} title="Total Patients" value={dashboardData.totalPatients} color="#3B82F6" />
-        <SummaryCard icon={<FiCalendar />} title="Upcoming Appts" value={dashboardData.upcomingAppointments} color="#10B981" />
-        <SummaryCard icon={<FiDollarSign />} title="Monthly Earnings" value={`$${dashboardData.monthlyEarnings}`} color="#F59E0B" />
+        <SummaryCard icon={<FiCalendar />} title="Pending Appts" value={dashboardData.upcomingAppointments} color="#10B981" /> {/* Renamed for clarity */}
+        <SummaryCard icon={<FiDollarSign />} title="Monthly Earnings" value={`$${dashboardData.monthlyEarnings.toLocaleString()}`} color="#F59E0B" /> {/* Formatted earnings */}
         <SummaryCard icon={<FiActivity />} title="Completed (Month)" value={dashboardData.completedAppointments} color="#8B5CF6" />
       </div>
 
@@ -62,7 +132,7 @@ const DoctorDashboard = () => {
             <h2 className="text-xl font-semibold text-[#14467c]">Pending Appointments</h2>
             <FiCalendar className="text-[#14467c]" />
           </div>
-          <AppointmentList />
+          <AppointmentList appointments={dashboardData.appointments} />
         </div>
       </div>
 

@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import moment from 'moment';
-import '../../style/appointmentDetail.css';
-
-
+import '../../style/AppointmentDetails.css';
 
 const AppointmentDetails = () => {
     const location = useLocation();
-    const { doctorId, date, timeSlot } = location.state || {};
+    const { doctorId, date, timeSlot, consultationFee } = location.state || {};
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         reason: '',
@@ -16,90 +14,119 @@ const AppointmentDetails = () => {
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
-    const { state } = useLocation();
+
+    useEffect(() => {
+        console.log('🔍 State received in AppointmentDetails:', {
+            doctorId,
+            date: date?.toISOString(),
+            timeSlot,
+            consultationFee
+        });
+    }, [location.state]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
         setError('');
-    
+
         try {
-            // Validate required data first
             if (!doctorId || !date || !timeSlot?.start_time) {
                 throw new Error('Missing appointment details');
             }
-            if (!state?.timeSlot) {
-                return <div className="error">No time slot selected</div>;
-              }
-    
-              const formattedDate = moment(date).format('YYYY-MM-DD');
-            // Format time properly
+            if (!location.state?.timeSlot) {
+                setError('No time slot selected');
+                return;
+            }
+
+            const formattedDate = moment(date).format('YYYY-MM-DD');
             const startTime = timeSlot.start_time;
-            // const formattedTime = `${timeSlot.start_time}:00`; // Add seconds
             const formattedTime = `${startTime}:00`;
 
             if (!startTime) {
                 setError('Invalid time slot');
                 return;
-              }
-              console.log(timeSlot?.start_time); 
+            }
+            console.log('⏰ Time slot:', timeSlot?.start_time);
 
             const payload = {
                 doctor_id: doctorId,
-                // date: moment(date).format('YYYY-MM-DD'),
                 date: formattedDate,
                 time: formattedTime,
                 reason: formData.reason,
                 notes: formData.notes
             };
 
-            console.log('Submitting payload:', payload);
-    
+            console.log('📤 Submitting payload:', payload);
+
             const response = await axios.post('/api/appointments', payload, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`,
                     'Content-Type': 'application/json'
                 }
             });
-    
+
             if (response.data.success) {
-                navigate('/appointment-confirmation', {
-                    state: {
-                        token: response.data.token,
-                        date: moment(date).format('LL'),
-                        timeSlot: timeSlot,
-                        time: startTime // Use original time for display
-                    }
+                const { paymentData, paymentUrl } = response.data;
+
+                if (!paymentData || !paymentUrl) {
+                    throw new Error('Payment initiation failed: Missing payment data or URL');
+                }
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = paymentUrl;
+
+                Object.keys(paymentData).forEach((key) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = paymentData[key];
+                    form.appendChild(input);
                 });
+
+                document.body.appendChild(form);
+                form.submit();
             }
-    
-            // const { doctorId, date, timeSlot } = state; 
         } catch (error) {
             setError(error.response?.data?.message || 'Booking failed. Please try again.');
-            console.error('Appointment Error:', {
+            console.error('⚠️ Appointment Error:', {
                 error: error.message,
                 doctorId,
                 date,
-                timeSlot
+                timeSlot,
+                consultationFee
             });
+            setTimeout(() => {
+                navigate('/doctors');
+            }, 3000);
         } finally {
             setSubmitting(false);
         }
     };
+
+    // Format consultationFee to display as a number with 2 decimal places
+    const displayConsultationFee = consultationFee != null ? Number(consultationFee).toFixed(2) : 'N/A';
+
     return (
-        <div className="appointment-details-container">
+       <div className="appointment-Container">
+ <div className="appointment-details-container">
             <h2>Appointment Details</h2>
             {error && <div className="error-banner">{error}</div>}
             
             <form onSubmit={handleSubmit}>
                 <div className="form-section">
                     <label>Date:</label>
-                    <p>{date?.toLocaleDateString() || 'N/A'}</p>
+                    <p>{date ? new Date(date).toLocaleDateString() : 'N/A'}</p>
                 </div>
 
                 <div className="form-section">
                     <label>Time Slot:</label>
-                       <p>{timeSlot?.start_time} - {timeSlot?.end_time}</p>
+                    <p>{timeSlot?.start_time && timeSlot?.end_time ? `${timeSlot.start_time} - ${timeSlot.end_time}` : 'N/A'}</p>
+                </div>
+
+                <div className="form-section">
+                    <label>Consultation Fee:</label>
+                    <p>NPR {displayConsultationFee}</p>
                 </div>
 
                 <div className="form-group">
@@ -110,6 +137,7 @@ const AppointmentDetails = () => {
                         value={formData.reason}
                         onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                         maxLength="100"
+                        placeholder="e.g., Routine check-up"
                     />
                 </div>
 
@@ -120,6 +148,7 @@ const AppointmentDetails = () => {
                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                         maxLength="500"
                         rows="4"
+                        placeholder="Any additional information"
                     />
                 </div>
 
@@ -127,13 +156,14 @@ const AppointmentDetails = () => {
                     type="submit" 
                     disabled={submitting}
                     className="submit-button"
-                    
                 >
-                    
-                    {submitting ? 'Processing...' : 'Confirm Appointment'}
+                    {submitting ? 'Processing...' : 'Confirm and Pay'}
                 </button>
             </form>
         </div>
+
+       </div>
+       
     );
 };
 

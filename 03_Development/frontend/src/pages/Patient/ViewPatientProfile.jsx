@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Loader } from 'lucide-react';
 import '../../style/PatientsProfile.css';
 import Footer from "../../components/Footer";
+
 const ViewPatientProfile = () => {
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -13,7 +14,7 @@ const ViewPatientProfile = () => {
         const fetchProfile = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get('/api/profile/patient', {
+                const response = await axios.get('http://localhost:3002/api/profile/patient', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (response.data.success) {
@@ -22,6 +23,7 @@ const ViewPatientProfile = () => {
                     setError(response.data.message || 'Failed to fetch patient profile');
                 }
             } catch (error) {
+                console.error('Profile fetch error:', error.response?.data);
                 setError(error.response?.data?.message || 'Error fetching patient profile');
             } finally {
                 setLoading(false);
@@ -67,73 +69,72 @@ const ViewPatientProfile = () => {
 
     return (
         <div>
-        <div className="patient-profile-container">
-            <div className="profile-grid">
-                <div>
-                    <div className="patient-header">
-                        <img
-                            src={profileData.profile_picture || '/default-avatar.png'}
-                            alt={profileData.fullname}
-                            className="patient-avatar"
-                        />
-                        <div className="patient-info">
-                            <h1 className="patient-name">{profileData.fullname}</h1>
-                            <p className="patient-email">{profileData.email}</p>
+            <div className="patient-profile-container">
+                <div className="profile-grid">
+                    <div>
+                        <div className="patient-header">
+                            <img
+                                src={profileData.profile_picture ? `http://localhost:3002/${profileData.profile_picture}` : '/default-avatar.png'}
+                                alt={profileData.fullname}
+                                className="patient-avatar"
+                            />
+                            <div className="patient-info">
+                                <h1 className="patient-name">{profileData.fullname}</h1>
+                                <p className="patient-email">{profileData.email}</p>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="section-content">
-                        <h2 className="section-title">Patient Details</h2>
-                        <ul className="patient-details-list">
-                            {profileData.patient_code && (
-                                <li className="list-item">
-                                    <strong>Patient Code:</strong> {profileData.patient_code}
-                                </li>
-                            )}
-                            {profileData.gender && (
-                                <li className="list-item">
-                                    <strong>Gender:</strong> {profileData.gender}
-                                </li>
-                            )}
-                            {profileData.blood_group && (
-                                <li className="list-item">
-                                    <strong>Blood Group:</strong> {profileData.blood_group}
-                                </li>
-                            )}
-                            {profileData.address && (
-                                <li className="list-item">
-                                    <strong>Address:</strong> {profileData.address}
-                                </li>
-                            )}
-                            {profileData.contact_number && (
-                                <li className="list-item">
-                                    <strong>Contact Number:</strong> {profileData.contact_number}
-                                </li>
-                            )}
-                            {profileData.emergency_contact_name && (
-                                <li className="list-item">
-                                    <strong>Emergency Contact Name:</strong> {profileData.emergency_contact_name}
-                                </li>
-                            )}
-                            {profileData.emergency_contact_number && (
-                                <li className="list-item">
-                                    <strong>Emergency Contact Number:</strong> {profileData.emergency_contact_number}
-                                </li>
-                            )}
-                        </ul>
+                        <div className="section-content">
+                            <h2 className="section-title">Patient Details</h2>
+                            <ul className="patient-details-list">
+                                {profileData.patient_code && (
+                                    <li className="list-item">
+                                        <strong>Patient Code:</strong> {profileData.patient_code}
+                                    </li>
+                                )}
+                                {profileData.gender && (
+                                    <li className="list-item">
+                                        <strong>Gender:</strong> {profileData.gender}
+                                    </li>
+                                )}
+                                {profileData.blood_group && (
+                                    <li className="list-item">
+                                        <strong>Blood Group:</strong> {profileData.blood_group}
+                                    </li>
+                                )}
+                                {profileData.address && (
+                                    <li className="list-item">
+                                        <strong>Address:</strong> {profileData.address}
+                                    </li>
+                                )}
+                                {profileData.contact_number && (
+                                    <li className="list-item">
+                                        <strong>Contact Number:</strong> {profileData.contact_number}
+                                    </li>
+                                )}
+                                {profileData.emergency_contact_name && (
+                                    <li className="list-item">
+                                        <strong>Emergency Contact Name:</strong> {profileData.emergency_contact_name}
+                                    </li>
+                                )}
+                                {profileData.emergency_contact_number && (
+                                    <li className="list-item">
+                                        <strong>Emergency Contact Number:</strong> {profileData.emergency_contact_number}
+                                    </li>
+                                )}
+                            </ul>
 
-                        <div className="patient-profile-actions">
-                            <Link to="/edit-patient-profile" className="patient-profile-cta-button">
-                                Edit Profile
-                            </Link>
+                            <div className="patient-profile-actions">
+                                <Link to="/edit-patient-profile" className="patient-profile-cta-button">
+                                    Edit Profile
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
-            
             </div>
+            <Footer />
         </div>
-    <Footer />
-    </div>
     );
 };
 

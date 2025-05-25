@@ -49,6 +49,32 @@
     max-width: 1400px;
     width: 100%;
 }
+.confirm-btn,
+.reject-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.confirm-btn {
+  background-color: #53b774;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background-color: #3cae64;
+}
+
+.reject-btn {
+  background-color: #f87171;
+  color: white;
+}
+
+.reject-btn:hover {
+  background-color: #e11d48;
+}
 
 @media (min-width: 768px) {
     .appointments-grid {
@@ -143,9 +169,13 @@
 }
 
 .appointment-status-badge.pending {
-    background: #fef3c7;
-    color: #92400e;
+  background-color: #fef3c7;
+  color: #92400e;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
 }
+
 
 .appointment-status-badge.completed {
     background: #e0f2fe;

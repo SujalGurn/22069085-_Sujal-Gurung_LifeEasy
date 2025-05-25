@@ -1,0 +1,35 @@
+.success-box {
+  background: white;
+  padding: 3rem 4rem;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+  position: relative;
+  overflow: hidden;
+}
+
+.success-heading {
+  font-size: 2.5rem;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  color: #14467c;
+  font-weight: bold;
+}
+
+.receipt-details {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  0% {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+}

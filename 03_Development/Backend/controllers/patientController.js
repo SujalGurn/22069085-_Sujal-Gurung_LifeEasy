@@ -1,23 +1,27 @@
-// patientController.js
 import { createPatient, getPatientByUserId, updatePatient, getAllPatients } from '../models/Patient.js';
 import { getMedicalHistoryByPatientId } from '../models/MedicalHistory.js';
 import { v4 as uuidv4 } from 'uuid';
-import { getUserById } from '../models/userModel.js'; // Assuming you have a User model (MySQL)
+import { getUserById } from '../models/userModel.js';
 
 export const createPatientProfile = async (req, res) => {
     try {
-        const patientData = { ...req.body, user_id: req.user.id, patient_code: `PAT-${uuidv4().substring(0, 8).toUpperCase()}` }; // Associate with logged-in user
+        const patientData = {
+            user_id: req.user.id,
+            patient_code: `PAT-${uuidv4().substring(0, 8).toUpperCase()}`,
+            gender: req.body.gender,
+            blood_group: req.body.blood_group,
+            address: req.body.address,
+            contact_number: req.body.contact_number,
+            emergency_contact_name: req.body.emergency_contact_name,
+            emergency_contact_number: req.body.emergency_contact_number,
+            profile_picture: req.file ? `uploads/profiles/${req.file.filename}` : null,
+        };
         const result = await createPatient(patientData);
         if (result.success) {
             res.status(201).json(result);
         } else {
             res.status(400).json(result);
         }
-        // When a user registers as a patient
-await pool.query(
-    'INSERT INTO patient (user_id, patient_code) VALUES (?, ?)',
-    [newUserId, generatePatientCode()]
-);
     } catch (error) {
         console.error('Error creating patient profile:', error);
         res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
@@ -26,11 +30,11 @@ await pool.query(
 
 export const getUserPatientProfile = async (req, res) => {
     try {
-        const userId = req.user.id; // User ID from the authenticated token
+        const userId = req.user.id;
         const patientResult = await getPatientByUserId(userId);
 
         if (patientResult.success && patientResult.data) {
-            const userResult = await getUserById(userId); // Assuming a function to fetch user by ID
+            const userResult = await getUserById(userId);
             if (userResult.success && userResult.data) {
                 return res.status(200).json({
                     success: true,
@@ -40,7 +44,7 @@ export const getUserPatientProfile = async (req, res) => {
                 return res.status(404).json({ success: false, message: 'User not found' });
             }
         } else {
-            return res.status(200).json({ success: true, data: null }); // Patient profile not found
+            return res.status(200).json({ success: true, data: null });
         }
     } catch (error) {
         console.error('Error fetching patient profile:', error);
@@ -54,18 +58,25 @@ export const updateUserPatientProfile = async (req, res) => {
         const patientResult = await getPatientByUserId(userId);
         if (patientResult.success && patientResult.data) {
             const patientId = patientResult.data.id;
-            const result = await updatePatient(patientId, req.body);
+            const patientData = {
+                gender: req.body.gender,
+                blood_group: req.body.blood_group,
+                address: req.body.address,
+                contact_number: req.body.contact_number,
+                emergency_contact_name: req.body.emergency_contact_name,
+                emergency_contact_number: req.body.emergency_contact_number,
+                profile_picture: req.file ? `uploads/profiles/${req.file.filename}` : patientResult.data.profile_picture,
+            };
+            const result = await updatePatient(patientId, patientData);
             return res.status(result.success ? 200 : 404).json(result);
         } else {
             return res.status(404).json({ success: false, message: 'Patient profile not found' });
         }
     } catch (error) {
         console.error('Error updating patient profile:', error);
-        return res.status(500).json({ success: false, message: 'Internal server error' });
+        res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
     }
 };
-
-
 
 export const getAllPatientProfiles = async (req, res) => {
     const result = await getAllPatients();

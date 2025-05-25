@@ -5,6 +5,8 @@ import {
     getUserDetails, 
     generateOTP, 
     verifyOTP, 
+    forgotPassword,
+    resetPassword,
     registerDoctor 
 } from '../controllers/authController.js';
 import upload from '../middleware/uploadMiddleware.js';
@@ -29,6 +31,11 @@ router.post('/login', login);
 router.get('/get-userDetails', authenticate, getUserDetails);
 router.post('/generate-otp', generateOTP);
 router.post('/verify-otp', verifyOTP);
+
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
+
+
 console.log(process.env.JWT_SECRET)
 
 

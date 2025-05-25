@@ -1,63 +1,113 @@
 // backend/controllers/medicalHistoryController.js
+import { pool } from '../config/db.js'; // Add this import
 import { createMedicalHistory, getMedicalHistoryByPatientId, getMedicalHistoryById, getAllMedicalHistory as getAllHistoryModel } from '../models/MedicalHistory.js';
-import { getPatientById } from '../models/Patient.js'; // Ensure this import is correct
+import { getPatientById } from '../models/Patient.js';
+import fs from 'fs';
+import path from 'path';
 
 export const addMedicalHistory = async (req, res) => {
     try {
-        const patientId = req.params.patientId; // Get patientId from URL
+        const patientId = req.params.patientId;
 
-        // **Check if the patient exists BEFORE creating medical history**
+        console.log('Adding medical history for patientId:', patientId);
+        console.log('Request body:', req.body);
+        console.log('Uploaded file:', req.file);
+
         const patientExistsResult = await getPatientById(patientId);
         if (!patientExistsResult.success || !patientExistsResult.data) {
+            if (req.file) {
+                const filePath = path.join(process.cwd(), 'uploads', 'medical-reports', req.file.filename);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    console.log('Cleaned up uploaded file:', filePath);
+                }
+            }
             return res.status(404).json({ success: false, message: `Patient with ID ${patientId} not found.` });
         }
 
+        // Verify file existence if uploaded
+        let reportPath = null;
+        if (req.file) {
+            const filePath = path.join(process.cwd(), 'uploads', 'medical-reports', req.file.filename);
+            console.log('Checking uploaded file at:', filePath);
+            if (!fs.existsSync(filePath)) {
+                console.error('Uploaded file not found:', filePath);
+                return res.status(500).json({ success: false, message: 'File upload failed: File not found on server.' });
+            }
+            reportPath = req.file.filename;
+        }
+
         const historyData = {
-            patient_id: patientId, // Ensure patient_id is included
+            patient_id: patientId,
             recorded_by_user_id: req.user.id,
-            blood_pressure: req.body.blood_pressure,
-            medication: req.body.medication,
-            allergies: req.body.allergies,
-            weight: req.body.weight,
-            height: req.body.height,
-            medical_condition: req.body.medical_condition,
-            diagnosis: req.body.diagnosis,
-            treatment: req.body.treatment,
-            notes: req.body.notes,
+            blood_pressure: req.body.blood_pressure || null,
+            medication: req.body.medication || null,
+            allergies: req.body.allergies || null,
+            weight: req.body.weight || null,
+            height: req.body.height || null,
+            medical_condition: req.body.medical_condition || null,
+            diagnosis: req.body.diagnosis || null,
+            treatment: req.body.treatment || null,
+            notes: req.body.notes || null,
             report_name: req.file ? req.file.originalname : null,
-            report_path: req.file ? `/uploads/reports/${req.file.filename}` : null, // Store the path
-            report_date: req.body.report_date || new Date(), // Get from frontend or default to now
+            report_path: reportPath,
+            report_date: req.body.report_date ? new Date(req.body.report_date) : new Date(),
             report_type: req.body.report_type || null,
             report_notes: req.body.report_notes || null,
         };
+
+        console.log('Saving medical history with data:', historyData);
+
         const result = await createMedicalHistory(historyData);
+
         if (result.success) {
             res.status(201).json(result);
         } else {
+            if (req.file && reportPath) {
+                const filePath = path.join(process.cwd(), 'uploads', 'medical-reports', reportPath);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    console.log('Cleaned up uploaded file:', filePath);
+                }
+            }
             res.status(400).json(result);
         }
     } catch (error) {
+        if (req.file) {
+            const filePath = path.join(process.cwd(), 'uploads', 'medical-reports', req.file.filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+                console.log('Cleaned up uploaded file on error:', filePath);
+            }
+        }
         console.error('Error adding medical history with report:', error);
         res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
     }
 };
 
-
-
 export const getPatientMedicalHistory = async (req, res) => {
     try {
-        const loggedInUserId = req.user.id; // Get logged-in user ID
-        const requestedPatientId = req.params.patientId; // Get patient ID from URL (if present)
+        const loggedInUserId = req.user.id;
+        const requestedPatientId = req.params.patientId;
 
         let patientIdToFetch;
 
-        // If a patientId is in the URL (doctor viewing), use that
         if (requestedPatientId) {
+            // Doctor viewing a specific patient's history
             patientIdToFetch = requestedPatientId;
+
+            // Verify that the user is a doctor or the patient themselves
+            const patientResult = await pool.query('SELECT user_id FROM patient WHERE id = ?', [requestedPatientId]);
+            if (patientResult[0].length === 0) {
+                return res.status(404).json({ success: false, message: 'Patient not found.' });
+            }
+            const patientUserId = patientResult[0][0].user_id;
+
+            if (req.user.role !== 'doctor' && req.user.id !== patientUserId) {
+                return res.status(403).json({ success: false, message: 'Access denied: Only doctors or the patient can view this medical history.' });
+            }
         } else {
-            // Otherwise, fetch history for the logged-in patient
-            // You'll need to query your 'patient' table to find the patientId
-            // associated with the loggedInUserId
+            // Patient viewing their own history
             const patientResult = await pool.query('SELECT id FROM patient WHERE user_id = ?', [loggedInUserId]);
             if (patientResult[0].length > 0) {
                 patientIdToFetch = patientResult[0][0].id;
@@ -83,7 +133,18 @@ export const getMedicalHistoryEntry = async (req, res) => {
     try {
         const result = await getMedicalHistoryById(historyId);
         if (result.success && result.data) {
-            res.json(result.data);
+            // Verify access: Only the patient or a doctor can view
+            const patientResult = await pool.query('SELECT user_id FROM patient WHERE id = ?', [result.data.patient_id]);
+            if (patientResult[0].length === 0) {
+                return res.status(404).json({ success: false, message: 'Patient not found.' });
+            }
+            const patientUserId = patientResult[0][0].user_id;
+
+            if (req.user.role !== 'doctor' && req.user.id !== patientUserId) {
+                return res.status(403).json({ success: false, message: 'Access denied: Only doctors or the patient can view this medical history entry.' });
+            }
+
+            res.json(result);
         } else {
             res.status(404).json({ success: false, message: 'Medical history entry not found' });
         }
@@ -95,6 +156,10 @@ export const getMedicalHistoryEntry = async (req, res) => {
 
 export const getAllMedicalHistory = async (req, res) => {
     try {
+        // Restrict to admins or doctors
+        if (req.user.role !== 'admin' && req.user.role !== 'doctor') {
+            return res.status(403).json({ success: false, message: 'Access denied: Only admins or doctors can view all medical history.' });
+        }
         const result = await getAllHistoryModel();
         if (result.success) {
             res.json({ success: true, data: result.data });
@@ -106,5 +171,3 @@ export const getAllMedicalHistory = async (req, res) => {
         res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
     }
 };
-
-

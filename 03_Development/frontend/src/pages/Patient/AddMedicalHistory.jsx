@@ -1,4 +1,3 @@
-// frontend/src/pages/Patient/AddMedicalHistory.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -30,68 +29,97 @@ const AddMedicalHistory = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e) => {
-    setReportFile(e.target.files[0]);
-  };
+ const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            setError('Invalid file type. Please upload a PDF, JPEG, or PNG file.');
+            setReportFile(null);
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setError('File size exceeds 5MB limit.');
+            setReportFile(null);
+            return;
+        }
+        setReportFile(file);
+        console.log('Selected file:', file.name, file.type, file.size);
+    } else {
+        setReportFile(null);
+    }
+};
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
 
+    const token = localStorage.getItem('token');
+    if (!token) {
+        setError('Please log in to add medical history.');
+        setLoading(false);
+        return;
+    }
+
     const formDataToSend = new FormData();
-    formDataToSend.append('patient_id', patientId);
     for (const key in formData) {
-      formDataToSend.append(key, formData[key]);
+        if (formData[key]) {
+            formDataToSend.append(key, formData[key]);
+        }
     }
     if (reportFile) {
-      formDataToSend.append('report', reportFile);
+        formDataToSend.append('report', reportFile);
+    }
+
+    for (const [key, value] of formDataToSend.entries()) {
+        console.log(`FormData: ${key} =`, value instanceof File ? value.name : value);
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post(
-        `/api/patients/${patientId}/history`,
-        formDataToSend,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
+        const response = await axios.post(
+            `/api/patients/${patientId}/history`,
+            formDataToSend,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            }
+        );
 
-      if (response.data.success) {
-        setSuccess('Medical history added successfully!');
-        setFormData({
-          blood_pressure: '',
-          medication: '',
-          allergies: '',
-          weight: '',
-          height: '',
-          medical_condition: '',
-          diagnosis: '',
-          treatment: '',
-          notes: '',
-          report_date: '',
-          report_type: '',
-          report_notes: '',
-        });
-        setReportFile(null);
-        // Optionally navigate back or show a message
-        setTimeout(() => {
-          navigate(`/patients/${patientId}/medical-history`); // Navigate back to patient's history
-        }, 1500);
-      } else {
-        setError(response.data.message || 'Failed to add medical history');
-      }
+        if (response.data.success) {
+            setSuccess('Medical history added successfully!');
+            setFormData({
+                blood_pressure: '',
+                medication: '',
+                allergies: '',
+                weight: '',
+                height: '',
+                medical_condition: '',
+                diagnosis: '',
+                treatment: '',
+                notes: '',
+                report_date: '',
+                report_type: '',
+                report_notes: '',
+            });
+            setReportFile(null);
+            document.getElementById('report').value = '';
+            setTimeout(() => {
+                navigate(`/patients/${patientId}/medical-history`);
+            }, 1500);
+        } else {
+            setError(response.data.message || 'Failed to add medical history');
+        }
     } catch (err) {
-      setError(err.response?.data?.message || 'Error adding medical history');
+        setError(err.response?.data?.message || 'Error adding medical history');
+        console.error('Submission error:', err);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   return (
     <motion.div
@@ -144,11 +172,12 @@ const AddMedicalHistory = () => {
         ))}
 
         <div className="md:col-span-2">
-          <label htmlFor="report" className="block text-gray-300 text-sm mb-1">Upload Report:</label>
+          <label htmlFor="report" className="block text-gray-300 text-sm mb-1">Upload Report (PDF, JPEG, PNG):</label>
           <input
             type="file"
             id="report"
             name="report"
+            accept=".pdf,.jpg,.jpeg,.png"
             onChange={handleFileChange}
             className="w-full text-white file:bg-white-700 file:border file:border-gray-600 file:rounded-md file:px-3 file:py-1 file:text-sm"
           />
@@ -158,7 +187,7 @@ const AddMedicalHistory = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-md transition duration-200"
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-md transition duration-200 disabled:opacity-50"
           >
             {loading ? 'Adding...' : 'Add Medical History'}
           </button>

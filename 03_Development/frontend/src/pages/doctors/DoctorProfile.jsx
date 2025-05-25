@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import moment from 'moment';
 import { FaPhoneAlt } from 'react-icons/fa';
@@ -9,10 +9,12 @@ import ErrorMessage from '../../components/ErrorMessage';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../../style/doctorProfile.css';
+import { toast } from 'react-toastify';
 
 const DoctorProfile = () => {
     const { id: urlId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { userData } = useContext(UserContext);
     const [doctorId, setDoctorId] = useState(null);
     const [doctor, setDoctor] = useState(null);
@@ -22,6 +24,10 @@ const DoctorProfile = () => {
     const [selectedDate, setSelectedDate] = useState(null);
     const [timeSlots, setTimeSlots] = useState([]);
     const [selectedTime, setSelectedTime] = useState(null);
+    const [imageError, setImageError] = useState(null);
+
+    const backendUrl = 'http://localhost:3002';
+    const defaultAvatar = 'https://via.placeholder.com/100'; // Fallback public URL
 
     const getAuthConfig = () => ({
         headers: {
@@ -31,6 +37,17 @@ const DoctorProfile = () => {
         },
         params: { t: Date.now() }
     });
+
+    useEffect(() => {
+        const { state } = location;
+        if (state?.success) {
+            toast.success(state.success, {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: true
+            });
+        }
+    }, [location]);
 
     useEffect(() => {
         const resolveDoctorId = async () => {
@@ -62,27 +79,38 @@ const DoctorProfile = () => {
                     axios.get(`/api/doctors/${doctorId}/availability/days`, getAuthConfig())
                 ]);
 
+                console.log('GET /api/doctors/profile response:', profileRes.data);
+                console.log('profile_picture from API:', profileRes.data?.doctor?.profile_picture);
+
                 if (!profileRes.data?.doctor) {
                     throw new Error('Doctor profile not found');
                 }
 
                 const doctorData = profileRes.data.doctor;
+                const profilePicture = doctorData.profile_picture
+                    ? `${backendUrl}${doctorData.profile_picture}?t=${Date.now()}`
+                    : defaultAvatar;
+
+                console.log('Profile picture URL:', profilePicture);
+
                 setDoctor({
                     id: doctorData.id,
                     fullname: doctorData.fullname || 'Unknown Doctor',
                     contact: doctorData.contact || 'Not available',
                     email: doctorData.email || '',
                     specialization: doctorData.specialization || 'General Practitioner',
-                    license_number: doctorData.license_number || '',
+                    licenseNumber: doctorData.licenseNumber || '',
                     about: doctorData.about || 'No bio available',
-                    profile_picture: doctorData.profile_picture || '/default-avatar.png',
-                    opd_schedule: doctorData.opd_schedule || 'Not specified',
+                    profilePicture,
+                    opdSchedule: doctorData.opdSchedule || 'Not specified',
+                    consultationFee: doctorData.consultationFee != null ? Number(doctorData.consultationFee) : 250.00,
                     qualifications: doctorData.qualifications || [],
                     experience: doctorData.experience || []
                 });
 
                 setAvailableDays(daysRes.data?.days || []);
                 setError(null);
+                setImageError(null);
             } catch (err) {
                 setError(err.response?.data?.message || err.message || 'Failed to load profile');
             } finally {
@@ -91,7 +119,7 @@ const DoctorProfile = () => {
         };
 
         if (doctorId) fetchData();
-    }, [doctorId]);
+    }, [doctorId, backendUrl]);
 
     const handleDateChange = async (date) => {
         setSelectedDate(date);
@@ -104,7 +132,7 @@ const DoctorProfile = () => {
                 `/api/doctors/${doctorId}/availability/times`,
                 {
                     ...getAuthConfig(),
-                    params: { day: dayOfWeek }
+                    params: { day: dayOfWeek, t: Date.now() }
                 }
             );
             
@@ -121,34 +149,50 @@ const DoctorProfile = () => {
 
     const handleBookAppointment = () => {
         if (!selectedDate || !selectedTime) {
-          alert("Please select a date and time slot first!");
-          return;
+            toast.error("Please select a date and time slot first!", {
+                position: "top-center",
+                autoClose: 2000
+            });
+            return;
         }
-      
-        navigate('/appointment-details', {
-          state: {
-            doctorId,
-            date: selectedDate,
-            timeSlot: selectedTime
-          }
-        });
-      };
 
+        const consultationFee = doctor?.consultationFee || 250.00;
+
+        navigate('/appointment-details', {
+            state: {
+                doctorId,
+                date: selectedDate,
+                timeSlot: selectedTime,
+                consultationFee
+            }
+        });
+    };
+
+    const handleImageError = () => {
+        console.error('Failed to load profile picture:', doctor?.profilePicture);
+        setImageError('Unable to load profile picture. Using default avatar.');
+        setDoctor(prev => ({
+            ...prev,
+            profilePicture: defaultAvatar
+        }));
+    };
 
     if (loading) return <Loader />;
     if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
     if (!doctor) return <div className="text-center mt-10">Doctor not found</div>;
+
     return (
         <div className="doctor-profile-container">
             <div className="profile-grid">
-                {/* Left Column */}
                 <div>
                     <div className="doctor-header">
                         <img 
-                            src={doctor.profile_picture} 
+                            src={doctor.profilePicture} 
                             alt={doctor.fullname}
                             className="doctor-avatar"
+                            onError={handleImageError}
                         />
+                        {imageError && <p className="error-text">{imageError}</p>}
                         <div className="doctor-info">
                             <h1 className="doctor-name">Dr. {doctor.fullname}</h1>
                             <p className="doctor-specialization">{doctor.specialization}</p>
@@ -168,8 +212,7 @@ const DoctorProfile = () => {
                                 <ul className="experience-list">
                                     {doctor.experience.map((exp, idx) => (
                                         <li key={idx} className="list-item">
-                                            <p>{exp.position}</p>
-                                            <p>{exp.institute} • {exp.duration}</p>
+                                            <p>{exp.position} at {exp.institute} ({exp.duration})</p>
                                         </li>
                                     ))}
                                 </ul>
@@ -191,14 +234,15 @@ const DoctorProfile = () => {
                     </div>
                 </div>
 
-                {/* Right Column */}
                 <div className="booking-sidebar">
                     <div className="booking-header">
-                    <h2 className="booking-title">Book Appointment</h2>
-
+                        <h2 className="booking-title">Book Appointment</h2>
                     </div>
                     <p className="opd-schedule">
-                        <strong>OPD Hours:</strong> {doctor.opd_schedule}
+                        <strong>OPD Hours:</strong> {doctor.opdSchedule}
+                    </p>
+                    <p className="consultation-fee">
+                        <strong>Consultation Fee:</strong> NPR {doctor.consultationFee.toFixed(2)}
                     </p>
 
                     <div className="date-picker-container">
@@ -255,4 +299,5 @@ const DoctorProfile = () => {
         </div>
     );
 };
+
 export default DoctorProfile;

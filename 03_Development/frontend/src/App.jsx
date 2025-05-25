@@ -52,7 +52,12 @@ const Loader = lazy(() => import("./components/Loader.jsx"))
 const ErrorMessage = lazy(() => import("./components/ErrorMessage.jsx")) 
 const Homes = lazy(() => import("./pages/HomePage/Homes.jsx"))
 const PatientsAppointments = lazy(() => import("./pages/Appointments/PatientsAppointments.jsx"))
-
+const PaymentSuccess = lazy(() => import("./pages/Appointments/PaymentSuccess.jsx"))
+const PaymentFailure = lazy(() => import("./pages/Appointments/PaymentFailure.jsx"))   
+const BedManagement = lazy(() => import("./pages/admin/BedManagement.jsx"))
+const ResetPassword = lazy(() => import("./pages/ResetPassword.jsx"))
+const ForgotPassword = lazy(() => import("./pages/ForgetPassword.jsx"))
+const AppointList = lazy(() => import("./pages/doctors/appointlist.jsx"))
 const App = () => {
     return (
         <UserProvider>
@@ -69,7 +74,12 @@ const App = () => {
                         <Route path="/doctors/:id/profile" element={<DoctorProfile />} />
                         <Route path="/homes" element={<Homes />} />
                         <Route path="/booking-details/:id" element={<BookingDetail />} />
-
+                        <Route path="/payment-success" element={<PaymentSuccess />} />
+                        <Route path="/payment-failure" element={<PaymentFailure />} />
+                        <Route path="/forgot-password" element={<ForgotPassword/>}/>
+                        <Route path="/reset-password/:token" element={<ResetPassword/>}/>
+                        <Route path="/doctors/:id" element={<DoctorDetails />} />
+                                                
                         {/* Admin routes with layout */}
                         <Route element={
                             <ProtectedRoute allowedRoles={['admin']}>
@@ -84,6 +94,7 @@ const App = () => {
                             <Route path="/salaryForm" element={<SalaryConfig />} />
                             <Route path="/salaryHistory" element={<SalaryHistory />} />
                             <Route path="/initialSalaryConfig" element={<InitialSalaryConfig />} />
+                            <Route path="/bed-management" element={<BedManagement />}/>
                             <Route path="/pendingApproval" element={<PendingApprovals />} />
                             <Route path="/staff-management" element={
                             <ProtectedRoute allowedRoles={['admin']}>
